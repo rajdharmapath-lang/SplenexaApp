@@ -10,12 +10,12 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Path, Rect } from 'react-native-svg';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import BottomNav from '../../components/BottomNav';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
+import AppBackground from '../../components/AppBackground';
 
 const SUBJECTS = [
   { key: 'anatomy', name: 'Anatomy', count: 12 },
@@ -110,12 +110,7 @@ export default function VideoLibraryScreen({
   }, [searchQuery]);
 
   return (
-    <LinearGradient
-      colors={['#8CD9F9', '#A7F0F3', '#A2F8E0']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="videos">
       <StatusBar barStyle="dark-content" />
       <Pressable
         accessibilityRole="button"
@@ -193,7 +188,7 @@ export default function VideoLibraryScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

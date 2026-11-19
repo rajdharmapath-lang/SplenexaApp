@@ -1,18 +1,13 @@
 import { Pressable, StatusBar, StyleSheet, Text, View } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../theme/typography';
+import AppBackground from '../components/AppBackground';
 
 export default function PreviewDetailScreen({ title, onBack }) {
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient
-      colors={['#8CD3E5', '#B0F3E0']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="preview">
       <StatusBar barStyle="dark-content" />
       <View style={[styles.content, { paddingTop: insets.top + 16, paddingBottom: insets.bottom + 24 }]}>
         <Pressable
@@ -28,7 +23,7 @@ export default function PreviewDetailScreen({ title, onBack }) {
           <Text style={styles.message}>This preview screen is connected. Content can be added here later.</Text>
         </View>
       </View>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

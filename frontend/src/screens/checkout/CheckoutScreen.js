@@ -1,5 +1,5 @@
 import PlaceholderScreen from '../../components/PlaceholderScreen';
 
 export default function CheckoutScreen() {
-  return <PlaceholderScreen title="Checkout" />;
+  return <PlaceholderScreen title="Checkout" variant="checkout" />;
 }

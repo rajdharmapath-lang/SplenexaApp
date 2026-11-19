@@ -1,21 +1,24 @@
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 import typography from '../theme/typography';
+import AppBackground from './AppBackground';
 
-export default function PlaceholderScreen({ title, onBack }) {
+export default function PlaceholderScreen({ title, onBack, variant = 'default' }) {
   return (
-    <View style={styles.container}>
-      {onBack ? (
-        <Pressable
-          accessibilityRole="button"
-          accessibilityLabel="Back"
-          onPress={onBack}
-          style={styles.backButton}
-        >
-          <Text style={styles.backText}>‹</Text>
-        </Pressable>
-      ) : null}
-      <Text style={styles.title}>{title}</Text>
-    </View>
+    <AppBackground variant={variant}>
+      <View style={styles.container}>
+        {onBack ? (
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Back"
+            onPress={onBack}
+            style={styles.backButton}
+          >
+            <Text style={styles.backText}>‹</Text>
+          </Pressable>
+        ) : null}
+        <Text style={styles.title}>{title}</Text>
+      </View>
+    </AppBackground>
   );
 }
 
@@ -26,7 +29,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     padding: 24,
-    backgroundColor: '#F5FBFC',
   },
   backButton: {
     position: 'absolute',

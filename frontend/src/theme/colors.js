@@ -1,6 +1,6 @@
 const colors = {
-  backgroundStart: '#8CD3E5',
-  backgroundEnd: '#B0F3E0',
+  backgroundStart: '#B8F0FA',
+  backgroundEnd: '#A0F2E5',
   navy: '#100568',
   secondary: '#5778A4',
   buttonStart: '#009DC5',

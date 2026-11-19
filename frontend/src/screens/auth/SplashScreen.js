@@ -1,7 +1,7 @@
 import { useEffect, useRef } from 'react';
 import { Animated, Image, StyleSheet, StatusBar, View, useWindowDimensions } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppBackground from '../../components/AppBackground';
 
 export default function SplashScreen() {
   const { width } = useWindowDimensions();
@@ -23,13 +23,7 @@ export default function SplashScreen() {
   const dotSize = Math.max(10, Math.min(width * 0.026, 22));
 
   return (
-    <LinearGradient
-      colors={['#88DAF1', '#92E3F1', '#A5EFEC', '#AEF5E8', '#B8F9E6']}
-      locations={[0, 0.25, 0.5, 0.75, 1]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="splash">
       <StatusBar hidden />
       <View style={styles.logoContainer}>
         <Image
@@ -49,7 +43,7 @@ export default function SplashScreen() {
         />
         <View style={[styles.dot, { width: dotSize, height: dotSize }]} />
       </View>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

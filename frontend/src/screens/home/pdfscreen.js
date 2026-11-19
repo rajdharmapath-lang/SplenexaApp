@@ -10,10 +10,10 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import BottomNav from '../../components/BottomNav';
+import AppBackground from '../../components/AppBackground';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 
 const PDF_SUBJECTS = [
@@ -79,12 +79,7 @@ export default function PdfScreen({ onBack, onNavigate, onNotificationPress, onO
   }
 
   return (
-    <LinearGradient
-      colors={theme.bg}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="pdf">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         contentContainerStyle={[
@@ -153,7 +148,7 @@ export default function PdfScreen({ onBack, onNavigate, onNotificationPress, onO
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

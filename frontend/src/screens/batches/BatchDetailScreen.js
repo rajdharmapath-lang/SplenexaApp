@@ -1,5 +1,5 @@
 import PlaceholderScreen from '../../components/PlaceholderScreen';
 
 export default function BatchDetailScreen() {
-  return <PlaceholderScreen title="Batch Details" />;
+  return <PlaceholderScreen title="Batch Details" variant="batchDetail" />;
 }

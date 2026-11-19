@@ -10,8 +10,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import AppBackground from '../../components/AppBackground';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 import typography from '../../theme/typography';
 
@@ -33,12 +33,7 @@ export default function DailyQuestionScreen({ question, initialAnswer, onAnswer,
   };
 
   return (
-    <LinearGradient
-      colors={theme.bg}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="dailyQuestion">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -200,7 +195,7 @@ export default function DailyQuestionScreen({ question, initialAnswer, onAnswer,
           </GlassCard>
         ) : null}
       </ScrollView>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

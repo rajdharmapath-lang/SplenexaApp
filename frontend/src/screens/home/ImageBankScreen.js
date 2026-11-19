@@ -8,10 +8,10 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import BottomNav from '../../components/BottomNav';
+import AppBackground from '../../components/AppBackground';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 
 const SUBJECTS = [
@@ -72,12 +72,7 @@ export default function ImageBankScreen({
   const cardWidth = (width - SIDE * 2 - GAP) / 2;
 
   return (
-    <LinearGradient
-      colors={['#A9DDF8', '#B5F0F6', '#A2F8E0']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="imageBank">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -108,7 +103,7 @@ export default function ImageBankScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

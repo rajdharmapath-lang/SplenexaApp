@@ -5,7 +5,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GlassCard, { glassCardEffects, theme } from './GlassCard';
 
-const ICON_SIZE = 40;
+const ICON_SIZE = 34;
 const CENTER_ICON_SIZE = 68;
 
 function GradientIcon({ name, size = ICON_SIZE }) {
@@ -89,7 +89,7 @@ export default function BottomNav({
           accessibilityState={{ selected: active === 'home' }}
           accessibilityLabel="Home"
           onPress={() => navigate('home')}
-          style={styles.item}
+          style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         >
           {active === 'home' ? (
             <GradientIcon name="home" />
@@ -104,7 +104,7 @@ export default function BottomNav({
           accessibilityState={{ selected: active === 'videos' }}
           accessibilityLabel="Videos"
           onPress={() => navigate('videos')}
-          style={styles.item}
+          style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         >
           {active === 'videos' ? (
             <GradientIcon name="play-circle" />
@@ -121,7 +121,7 @@ export default function BottomNav({
           accessibilityState={{ selected: activeTests }}
           accessibilityLabel={activeTests ? 'Test Series, selected' : 'Test Series'}
           onPress={() => navigate('testSeries')}
-          style={styles.item}
+          style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         >
           <MCQIcon active={activeTests} />
           {activeTests ? <Underline /> : null}
@@ -132,7 +132,7 @@ export default function BottomNav({
           accessibilityState={{ selected: active === 'profile' }}
           accessibilityLabel="Profile"
           onPress={() => navigate('profile')}
-          style={styles.item}
+          style={({ pressed }) => [styles.item, pressed && styles.itemPressed]}
         >
           {active === 'profile' ? (
             <GradientIcon name="person" />
@@ -215,6 +215,10 @@ const styles = StyleSheet.create({
     height: 48,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  itemPressed: {
+    opacity: 0.72,
+    transform: [{ scale: 0.94 }],
   },
   underline: {
     position: 'absolute',

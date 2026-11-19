@@ -16,6 +16,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
 import ThemedAlert from '../../components/ThemedAlert';
+import AppBackground from '../../components/AppBackground';
 
 const OTP_LENGTH = 6;
 const RESEND_DELAY = 29;
@@ -123,13 +124,7 @@ export default function OtpVerificationScreen({
   }
 
   return (
-    <LinearGradient
-      colors={['#B0E9FD', '#BDF0FD', '#C7F9F8', '#C5FCEF', '#C2FCEC']}
-      locations={[0, 0.25, 0.5, 0.75, 1]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="otp">
       <StatusBar hidden />
       <ScrollView
         contentContainerStyle={[
@@ -263,7 +258,7 @@ export default function OtpVerificationScreen({
         actions={[{ label: 'OK', variant: 'primary', onPress: () => setErrorDialog(null) }]}
         onRequestClose={() => setErrorDialog(null)}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

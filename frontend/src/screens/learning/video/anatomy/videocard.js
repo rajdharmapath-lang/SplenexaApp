@@ -14,6 +14,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GlassCard, { glassCardEffects, theme } from '../../../../components/GlassCard';
 import BottomNav from '../../../../components/BottomNav';
 import typography from '../../../../theme/typography';
+import AppBackground from '../../../../components/AppBackground';
 
 const GAP = 10;
 
@@ -131,12 +132,7 @@ export default function AnatomyVideoCardScreen({
   const thumbnailWidth = Math.round(width * 0.34);
 
   return (
-    <LinearGradient
-      colors={['#8CD9F9', '#A7F0F3', '#A2F8E0']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="videoTopic">
       <StatusBar barStyle="dark-content" />
       <Pressable
         onPress={onBack}
@@ -193,7 +189,7 @@ export default function AnatomyVideoCardScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

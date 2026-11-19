@@ -4,7 +4,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import Svg, { Defs, RadialGradient, Rect, Stop } from 'react-native-svg';
 
 export const theme = {
-  bg: ['#8CD3E5', '#B0F3E0'],
+  bg: ['#ADEBFA', '#D8F8FF', '#DDFBF6', '#A8F3DF'],
   navy: '#100568',
   muted: '#5778A4',
   blue: '#009DC5',

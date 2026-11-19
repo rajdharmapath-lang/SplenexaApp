@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import BottomNav from '../../components/BottomNav';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
+import AppBackground from '../../components/AppBackground';
 
 const SUBJECTS = [
   { id: 'anatomy', name: 'Anatomy', icon: require('../../assets/images/subjects/icons/anatomy.png') },
@@ -87,12 +88,7 @@ export default function SubjectWiseTestScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient
-      colors={['#8CD3E5', '#B0F3E0']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="subjects">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         contentContainerStyle={[
@@ -127,7 +123,7 @@ export default function SubjectWiseTestScreen({
       </ScrollView>
 
       <BottomNavigation onNavigate={onNavigate} onNotificationPress={onNotificationPress} />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

@@ -18,6 +18,7 @@ import typography from '../../theme/typography';
 import { getBatchYears, INDIAN_STATES_AND_UTS } from '../../utils/constants';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
 import ThemedAlert from '../../components/ThemedAlert';
+import AppBackground from '../../components/AppBackground';
 
 const ROW_H = 56;
 
@@ -69,13 +70,7 @@ export default function ProfileSetupScreen({ onBack, onComplete, demoMode = fals
   }
 
   return (
-    <LinearGradient
-      colors={['#A8E5FD', '#B7F1FD', '#C4FDF3', '#C6FDEC', '#C5FCEE']}
-      locations={[0, 0.25, 0.5, 0.75, 1]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="profileSetup">
       <StatusBar hidden />
       <ScrollView
         contentContainerStyle={[
@@ -245,7 +240,7 @@ export default function ProfileSetupScreen({ onBack, onComplete, demoMode = fals
         actions={[{ label: 'OK', variant: 'primary', onPress: () => setErrorDialog(null) }]}
         onRequestClose={() => setErrorDialog(null)}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

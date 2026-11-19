@@ -1,5 +1,5 @@
 import PlaceholderScreen from '../../components/PlaceholderScreen';
 
 export default function DeleteAccountScreen() {
-  return <PlaceholderScreen title="Delete Account" />;
+  return <PlaceholderScreen title="Delete Account" variant="deleteAccount" />;
 }

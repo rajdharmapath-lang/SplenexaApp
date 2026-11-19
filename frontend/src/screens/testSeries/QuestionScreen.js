@@ -16,6 +16,7 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 import ThemedAlert from '../../components/ThemedAlert';
+import AppBackground from '../../components/AppBackground';
 import typography from '../../theme/typography';
 import QUESTION_BANK from '../../data/questionBank';
 
@@ -236,12 +237,7 @@ export default function QuestionScreen({
   }
 
   return (
-    <LinearGradient
-      colors={['#BFEBFB', '#B7F3F8', '#A8F8E5']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="testQuestion">
       <StatusBar barStyle="dark-content" />
       <View style={[styles.screenContent, { paddingTop: insets.top + 48 }]}>
         <View style={styles.header}>
@@ -661,7 +657,7 @@ export default function QuestionScreen({
           <Feather name="arrow-right" size={20} color="#FFFFFF" />
         </Pressable>
       </View>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

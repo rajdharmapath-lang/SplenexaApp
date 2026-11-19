@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import BottomNav from '../../components/BottomNav';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 import typography from '../../theme/typography';
+import AppBackground from '../../components/AppBackground';
 
 function InfoLine({ icon, label, value }) {
   if (!value) {
@@ -73,13 +74,7 @@ export default function ProfileScreen({
   const initial = displayName.charAt(0).toUpperCase();
 
   return (
-    <LinearGradient
-      colors={['#B8F1FF', '#8FF0F7', '#B4FBE0']}
-      locations={[0, 0.45, 1]}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="profile">
       <View pointerEvents="none" style={[styles.glow, styles.glowTop]} />
       <View pointerEvents="none" style={[styles.glow, styles.glowBottom]} />
       <StatusBar barStyle="dark-content" />
@@ -182,7 +177,7 @@ export default function ProfileScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

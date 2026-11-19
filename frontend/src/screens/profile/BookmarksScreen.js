@@ -1,10 +1,10 @@
 import { Pressable, ScrollView, StatusBar, StyleSheet, Text, View } from 'react-native';
 import { Feather } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 import BottomNav from '../../components/BottomNav';
 import typography from '../../theme/typography';
+import AppBackground from '../../components/AppBackground';
 
 function BookmarkCard({ bookmark, onOpen, onRemove }) {
   return (
@@ -55,12 +55,7 @@ export default function BookmarksScreen({
   const insets = useSafeAreaInsets();
 
   return (
-    <LinearGradient
-      colors={theme.bg}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="bookmarks">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -120,7 +115,7 @@ export default function BookmarksScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

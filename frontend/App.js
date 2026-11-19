@@ -2,6 +2,7 @@ import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import AppNavigator from './src/navigation/AppNavigator';
 import SplashScreen from './src/screens/auth/SplashScreen';
+import AppBackground from './src/components/AppBackground';
 
 export default function App() {
   const [fontsLoaded, fontError] = useFonts({
@@ -17,7 +18,9 @@ export default function App() {
 
   return (
     <SafeAreaProvider>
-      {fontsLoaded ? <AppNavigator /> : <SplashScreen />}
+      <AppBackground>
+        {fontsLoaded ? <AppNavigator /> : <SplashScreen />}
+      </AppBackground>
     </SafeAreaProvider>
   );
 }

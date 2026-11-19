@@ -17,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 import BottomNav from '../../components/BottomNav';
+import AppBackground from '../../components/AppBackground';
 
 function SectionTitle({ type, title, streakCompleted = false }) {
   const flameMotion = useRef(new Animated.Value(0)).current;
@@ -255,12 +256,7 @@ export default function HomeScreen({
   const displayName = userName.trim() || 'Aswin';
 
   return (
-    <LinearGradient
-      colors={theme.bg}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="home">
       <StatusBar hidden />
       <ScrollView
         style={styles.scrollView}
@@ -269,7 +265,7 @@ export default function HomeScreen({
           styles.content,
           {
             paddingTop: insets.top + 48,
-            paddingBottom: insets.bottom + 130,
+            paddingBottom: insets.bottom + 120,
           },
         ]}
         showsVerticalScrollIndicator={false}
@@ -426,7 +422,7 @@ export default function HomeScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 
@@ -439,7 +435,7 @@ const styles = StyleSheet.create({
   },
   content: {
     flexGrow: 1,
-    paddingHorizontal: 22,
+    paddingHorizontal: 24,
   },
   greeting: {
     marginBottom: 0,

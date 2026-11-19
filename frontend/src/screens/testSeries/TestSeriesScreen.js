@@ -12,6 +12,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
 import BottomNav from '../../components/BottomNav';
+import AppBackground from '../../components/AppBackground';
 
 const NAVY = '#0B0B5C';
 const BLUE_TEXT = '#4A5F94';
@@ -76,12 +77,7 @@ export default function TestSeriesScreen({
     };
 
   return (
-    <LinearGradient
-      colors={['#B4E8FC', '#B3F3F5', '#A2F8E0']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.background}
-    >
+    <AppBackground variant="tests">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -149,7 +145,7 @@ export default function TestSeriesScreen({
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
       />
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

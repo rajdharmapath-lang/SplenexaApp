@@ -12,6 +12,7 @@ import Svg, { Circle, Defs, LinearGradient as SvgGradient, Stop } from 'react-na
 import { Feather, Ionicons, MaterialCommunityIcons } from '@expo/vector-icons';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
+import AppBackground from '../../components/AppBackground';
 import typography from '../../theme/typography';
 
 const PASS_MARK = 75;
@@ -222,12 +223,7 @@ export default function GrandTestResultScreen({
   const labelSize = Math.max(9, Math.min(12.5, metricTextWidth / (maxMetricLabelLength * 0.56)));
 
   return (
-    <LinearGradient
-      colors={['#B7E8FB', '#B3F2F8', '#A9F8E6']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="grandResult">
       <StatusBar barStyle="dark-content" />
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -407,7 +403,7 @@ export default function GrandTestResultScreen({
           </>
         ) : null}
       </ScrollView>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

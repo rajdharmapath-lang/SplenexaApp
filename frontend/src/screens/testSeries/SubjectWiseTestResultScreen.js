@@ -10,6 +10,7 @@ import {
 import { LinearGradient } from 'expo-linear-gradient';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
+import AppBackground from '../../components/AppBackground';
 
 function MetricCard({ icon, label, value, width }) {
   return (
@@ -37,12 +38,7 @@ export default function SubjectWiseTestResultScreen({
   const displayName = userName?.trim() || 'Student';
 
   return (
-    <LinearGradient
-      colors={['#B8F0FA', '#A8F9E9']}
-      start={{ x: 0.5, y: 0 }}
-      end={{ x: 0.5, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="subjectResult">
       <StatusBar barStyle="dark-content" />
       <View style={[styles.screenContent, { paddingTop: insets.top + 8 }]}>
         <View style={[styles.header, { width: contentWidth }]}>
@@ -128,7 +124,7 @@ export default function SubjectWiseTestResultScreen({
           </Pressable>
         </ScrollView>
       </View>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 

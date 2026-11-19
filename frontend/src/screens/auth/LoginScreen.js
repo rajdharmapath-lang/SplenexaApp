@@ -18,6 +18,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import typography from '../../theme/typography';
 import { isValidPhoneNumber } from '../../utils/validators';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
+import AppBackground from '../../components/AppBackground';
 
 export default function LoginScreen({ initialPhoneNumber = '', onGetOtp, demoMode = false }) {
   const { width } = useWindowDimensions();
@@ -44,18 +45,12 @@ export default function LoginScreen({ initialPhoneNumber = '', onGetOtp, demoMod
   }
 
   return (
-    <LinearGradient
-      colors={['#7FD7F5', '#9BE6F7', '#A4F1F4', '#9FF9EA', '#A2FBE3']}
-      locations={[0, 0.25, 0.5, 0.75, 1]}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.screen}
-    >
+    <AppBackground variant="login" style={styles.screen}>
       <StatusBar hidden />
       <ScrollView
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 20, paddingBottom: insets.bottom + 110 },
+          { paddingTop: insets.top + 18, paddingBottom: insets.bottom + 28 },
         ]}
         keyboardShouldPersistTaps="handled"
         onScrollBeginDrag={Keyboard.dismiss}
@@ -142,7 +137,7 @@ export default function LoginScreen({ initialPhoneNumber = '', onGetOtp, demoMod
             <Text style={styles.verification}>We’ll send you a verification code.</Text>
         </GlassCard>
       </ScrollView>
-    </LinearGradient>
+    </AppBackground>
   );
 }
 
@@ -157,24 +152,27 @@ const styles = StyleSheet.create({
     paddingHorizontal: 22,
   },
   logo: {
-    marginBottom: 26,
+    marginBottom: 18,
   },
   welcome: {
     color: '#100568',
-    fontSize: 30,
+    fontSize: 28,
     fontFamily: typography.fontFamily.bold,
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   intro: {
-    color: '#5778A4',
+    color: '#4F7DAA',
     fontSize: 16,
     fontFamily: typography.fontFamily.regular,
     lineHeight: 24,
     textAlign: 'center',
-    marginBottom: 24,
+    marginBottom: 22,
   },
-  card: { width: '100%' },
+  card: {
+    width: '100%',
+    borderRadius: 32,
+  },
   cardContent: {
     padding: 24,
   },
