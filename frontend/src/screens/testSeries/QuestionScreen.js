@@ -119,6 +119,7 @@ export default function QuestionScreen({
   bookmarkKeyPrefix = '',
   onToggleBookmark,
   questions = QUESTION_BANK,
+  reviewEnabled = true,
 }) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
@@ -134,7 +135,9 @@ export default function QuestionScreen({
   const progress = (questionIndex + 1) / questions.length;
   const isLastQuestion = questionIndex === questions.length - 1;
   const selectedOption = answers[questionIndex] ?? null;
-  const submitted = selectedOption !== null && !onFinish;
+  const submitted = selectedOption !== null &&
+    !onFinish &&
+    (reviewEnabled || answers.every((answer) => answer !== null));
   const attemptedCount = answers.filter((answer) => answer !== null).length;
   const imageAspectRatio = question.imageAspectRatio || 1.5;
   const imageWidth = Math.min(screenWidth - 44 - 20, 420 * imageAspectRatio);

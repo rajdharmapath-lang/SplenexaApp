@@ -520,17 +520,19 @@ export default function MainTabs({
     });
   };
 
-  const toggleQuestionBookmark = (question, isCurrentlyBookmarked) => {
+  const toggleQuestionBookmark = (question, isCurrentlyBookmarked, context = {}) => {
+      const screen = context.screen ?? questionReturnScreen;
+      const title = context.title ?? questionTitle;
       persistBookmarkChange(
         {
-          identity: `${questionReturnScreen}:${questionTitle}:${question.id ?? question.text}`,
-          testTitle: questionTitle,
-          category: TEST_CATEGORIES[questionReturnScreen] ?? 'Test Series',
+          identity: `${screen}:${title}:${question.id ?? question.text}`,
+          testTitle: title,
+          category: TEST_CATEGORIES[screen] ?? 'Test Series',
           subjectName:
             question.subjectName ??
-            (questionTitle.includes(' · ')
-              ? questionTitle.split(' · ')[0]
-              : questionReturnScreen === 'grandTest'
+            (title.includes(' · ')
+              ? title.split(' · ')[0]
+              : screen === 'grandTest'
                 ? 'All Subjects'
                 : 'General'),
           questionId: question.id,
@@ -1092,7 +1094,8 @@ export default function MainTabs({
         onBack={() => setActiveScreen(libraryReturnScreen)}
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
-        onOpenSubject={(subject) => openQuestion(`${subject.name} · Q Bank`, 'qBank')}
+        bookmarkedKeys={bookmarks.map((bookmark) => bookmark.identity)}
+        onToggleBookmark={toggleQuestionBookmark}
       />
     );
   }
