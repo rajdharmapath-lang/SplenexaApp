@@ -20,15 +20,13 @@ import { isValidPhoneNumber } from '../../utils/validators';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
 import AppBackground from '../../components/AppBackground';
 
-export default function LoginScreen({ initialPhoneNumber = '', onGetOtp, demoMode = false }) {
+export default function LoginScreen({ initialPhoneNumber = '', onGetOtp }) {
   const { width } = useWindowDimensions();
   const insets = useSafeAreaInsets();
   const [phoneNumber, setPhoneNumber] = useState(initialPhoneNumber);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const logoWidth = Math.min(width * 0.58, 320);
-  const isPhoneNumberValid = demoMode
-    ? /^\d{10}$/.test(phoneNumber)
-    : isValidPhoneNumber(phoneNumber);
+  const isPhoneNumberValid = isValidPhoneNumber(phoneNumber);
   const canRequestOtp = isPhoneNumberValid && !isSubmitting;
 
   async function handleGetOtp() {

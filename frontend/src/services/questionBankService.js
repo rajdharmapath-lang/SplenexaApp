@@ -42,5 +42,8 @@ export async function fetchQuestionBank() {
   ) {
     throw new Error('Question Bank API returned an invalid catalog.');
   }
-  return catalog;
+  return {
+    ...catalog,
+    tests: Array.isArray(catalog.tests) ? catalog.tests : [],
+  };
 }

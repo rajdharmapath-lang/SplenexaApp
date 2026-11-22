@@ -55,12 +55,13 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
-  const verifyOtp = useCallback(async (phoneNumber, token, requestId) => {
-    const authenticated = await verifyPhoneOtp(phoneNumber, token, requestId);
+  const verifyOtp = useCallback(async (phoneNumber, code, requestId) => {
+    const authenticated = await verifyPhoneOtp(phoneNumber, code, requestId);
     setSession(authenticated.session);
     setSessionRestored(false);
     setAuthError(null);
     setProfile(authenticated.user);
+    return authenticated;
   }, []);
 
   const completeProfile = useCallback(async (profileDetails) => {

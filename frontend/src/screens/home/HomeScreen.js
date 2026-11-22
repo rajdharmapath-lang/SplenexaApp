@@ -238,7 +238,7 @@ export default function HomeScreen({
   streakCount = 0,
   streakCompleted = false,
   streakError,
-  todayQuestion = 'Which of the following inhalation agents has a blood-gas partition coefficient similar to nitrous oxide?',
+  todayQuestion = 'Today’s question will appear here when available from the Question Bank.',
   todayQuestionSubject = '',
   previousVideoTitle = 'Previous Video',
   videoProgress = 0.55,

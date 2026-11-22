@@ -8,7 +8,7 @@ import NotificationsScreen from '../screens/home/NotificationsScreen';
 import PdfScreen from '../screens/home/pdfscreen';
 import GrandTestScreen from '../screens/testSeries/GrandTestScreen';
 import ImageBasedTestScreen from '../screens/testSeries/ImageBasedTestScreen';
-import QBankScreen from '../screens/testSeries/QBankScreen';
+import QBankScreen, { toQuestion } from '../screens/testSeries/QBankScreen';
 import SubjectWiseTestScreen from '../screens/testSeries/SubjectWiseTestScreen';
 import TestSeriesScreen from '../screens/testSeries/TestSeriesScreen';
 import QuestionScreen from '../screens/testSeries/QuestionScreen';
@@ -22,7 +22,7 @@ import BookmarksScreen from '../screens/profile/BookmarksScreen';
 import BookmarkDetailScreen from '../screens/profile/BookmarkDetailScreen';
 import PreviewDetailScreen from '../screens/PreviewDetailScreen';
 import DailyQuestionScreen from '../screens/home/DailyQuestionScreen';
-import QUESTION_BANK from '../data/questionBank';
+import { fetchQuestionBank } from '../services/questionBankService';
 
 const TEST_LOCKS_STORAGE_KEY = 'splenexa.test-locks.v1';
 const TEST_HISTORY_STORAGE_KEY = 'splenexa.test-history.v1';
@@ -39,6 +39,7 @@ const TEST_CATEGORIES = {
   imageBasedTest: 'Image Based Test',
   subjectWiseTest: 'Subject-wise Test',
   qBank: 'Q-Bank',
+  questionBankTest: 'Question Bank Test',
 };
 
 function getBookmarkStorageId(identity) {
@@ -107,6 +108,9 @@ export default function MainTabs({
   const [videoTopicReturnScreen, setVideoTopicReturnScreen] = useState('videos');
   const [questionTitle, setQuestionTitle] = useState('');
   const [questionReturnScreen, setQuestionReturnScreen] = useState('testSeries');
+  const [questionTestKey, setQuestionTestKey] = useState('');
+  const [questionConfig, setQuestionConfig] = useState(null);
+  const [selectedQBankProductId, setSelectedQBankProductId] = useState(null);
   const [testLocks, setTestLocks] = useState({});
   const [testLocksLoaded, setTestLocksLoaded] = useState(false);
   const [testLocksLoadError, setTestLocksLoadError] = useState(null);
@@ -118,10 +122,9 @@ export default function MainTabs({
   const [activityDates, setActivityDates] = useState([]);
   const [streakLoaded, setStreakLoaded] = useState(false);
   const [streakLoadError, setStreakLoadError] = useState(null);
-  const [dailyQuestion, setDailyQuestion] = useState(
-    () => QUESTION_BANK[Math.floor(Math.random() * QUESTION_BANK.length)],
-  );
+  const [dailyQuestion, setDailyQuestion] = useState(null);
   const [dailyQuestionReady, setDailyQuestionReady] = useState(false);
+  const [dailyQuestionLoadError, setDailyQuestionLoadError] = useState(null);
   const [dailyQuestionAnswer, setDailyQuestionAnswer] = useState(null);
   const [bookmarksLoaded, setBookmarksLoaded] = useState(false);
   const [bookmarksLoadError, setBookmarksLoadError] = useState(null);
@@ -146,38 +149,39 @@ export default function MainTabs({
     const dateKey = getLocalDateKey(new Date());
     const selectionKey = `${DAILY_QUESTION_SELECTION_KEY_PREFIX}${dateKey}`;
 
-    SecureStore.getItemAsync(selectionKey)
-      .then(async (savedQuestionId) => {
-        const selectedQuestion = QUESTION_BANK.find(
+    Promise.all([fetchQuestionBank(), SecureStore.getItemAsync(selectionKey)])
+      .then(async ([catalog, savedQuestionId]) => {
+        const questions = [];
+        catalog.questions
+          .filter((question) => String(question.status || 'Active').toLowerCase() === 'active')
+          .forEach((question) => {
+            try {
+              questions.push(toQuestion(question));
+            } catch (error) {
+              console.warn(`Skipping incomplete daily question ${question.id || ''}.`, error.message);
+            }
+          });
+        if (!questions.length) {
+          throw new Error('No active questions are available in the database yet.');
+        }
+        const selectedQuestion = questions.find(
           (question) => String(question.id) === savedQuestionId,
         );
-        if (savedQuestionId && !selectedQuestion) {
-          throw new Error('Stored daily question is not in the question bank.');
+        const question = selectedQuestion ||
+          questions[Math.floor(Math.random() * questions.length)];
+        if (!selectedQuestion) {
+          await SecureStore.setItemAsync(selectionKey, String(question.id));
         }
-
-        if (selectedQuestion) {
-          if (isMounted) {
-            setDailyQuestion(selectedQuestion);
-            setDailyQuestionReady(true);
-          }
-          return;
-        }
-
-        const randomQuestion =
-          QUESTION_BANK[Math.floor(Math.random() * QUESTION_BANK.length)];
-        await SecureStore.setItemAsync(selectionKey, String(randomQuestion.id));
         if (isMounted) {
-          setDailyQuestion(randomQuestion);
+          setDailyQuestion(question);
           setDailyQuestionReady(true);
+          setDailyQuestionLoadError(null);
         }
       })
       .catch((error) => {
-        console.error('Unable to load daily question selection.', error);
+        console.error('Unable to load daily question from the database.', error);
         if (isMounted) {
-          setAppAlert({
-            title: 'Unable to load today’s question',
-            message: 'The question of the day could not be saved. Please try again.',
-          });
+          setDailyQuestionLoadError(error);
         }
       });
 
@@ -187,6 +191,7 @@ export default function MainTabs({
   }, []);
 
   useEffect(() => {
+    if (!dailyQuestion) return undefined;
     let isMounted = true;
     const answerKey =
       `${DAILY_QUESTION_STORAGE_KEY_PREFIX}${getLocalDateKey(new Date())}.` +
@@ -552,7 +557,7 @@ export default function MainTabs({
 
   const updateQuestionProgress = useCallback(({ attempted, total }) => {
     setQuestionProgress({ attempted, total });
-    const key = `${questionReturnScreen}:${questionTitle}`;
+    const key = questionTestKey || `${questionReturnScreen}:${questionTitle}`;
     const existing = attemptHistoryRef.current.find((item) => item.key === key);
     if (!existing) {
       return;
@@ -567,7 +572,7 @@ export default function MainTabs({
       showAppAlert('Unable to save progress', 'Your latest test progress could not be saved.');
       console.error('Unable to save test progress.', error);
     });
-  }, [questionReturnScreen, questionTitle]);
+  }, [questionReturnScreen, questionTestKey, questionTitle]);
 
   const showAppAlert = (title, message) => setAppAlert({ title, message });
 
@@ -610,10 +615,10 @@ export default function MainTabs({
   };
 
   const openDailyQuestion = async () => {
-    if (!dailyQuestionReady) {
+    if (!dailyQuestionReady || !dailyQuestion) {
       showAppAlert(
         'Question unavailable',
-        'Today’s question is still loading. Please try again in a moment.',
+        dailyQuestionLoadError?.message || 'Today’s question is still loading. Please try again in a moment.',
       );
       return;
     }
@@ -735,7 +740,7 @@ export default function MainTabs({
                     : activeScreen === 'question'
                       ? questionReturnScreen
                       : activeScreen === 'grandTestResult'
-                        ? 'grandTest'
+                        ? questionReturnScreen === 'questionBankTest' ? 'testSeriesTests' : 'grandTest'
                         : activeScreen === 'imageBasedTestResult'
                           ? 'imageBasedTest'
                           : activeScreen === 'subjectWiseTestResult'
@@ -764,11 +769,12 @@ export default function MainTabs({
     setActiveScreen('preview');
   };
 
-  const openQuestion = async (title, returnScreen) => {
+  const openQuestion = async (title, returnScreen, options = {}) => {
     const isTest = [
       'grandTest',
       'imageBasedTest',
       'subjectWiseTest',
+      'questionBankTest',
     ].includes(returnScreen);
     if (isTest && (testLocksLoadError || !testLocksLoaded)) {
       showAppAlert(
@@ -778,7 +784,7 @@ export default function MainTabs({
       return;
     }
 
-    const testKey = `${returnScreen}:${title}`;
+    const testKey = options.testKey || `${returnScreen}:${title}`;
     if (isTest && testLocks[testKey]) {
       showAppAlert(
         testLocks[testKey] === 'submitted' ? 'Test already submitted' : 'Test canceled',
@@ -791,6 +797,14 @@ export default function MainTabs({
       showAppAlert(
         'Attempt history unavailable',
         'The app could not load your saved test activity. Please restart the app and try again.',
+      );
+      return;
+    }
+
+    if (!Array.isArray(options.questionConfig?.questions) || !options.questionConfig.questions.length) {
+      showAppAlert(
+        'Test unavailable',
+        'This test has no questions in the database yet. Add questions in the admin website and try again.',
       );
       return;
     }
@@ -815,14 +829,73 @@ export default function MainTabs({
 
     setQuestionTitle(title);
     setQuestionReturnScreen(returnScreen);
+    setQuestionTestKey(testKey);
+    setQuestionConfig(options.questionConfig || null);
     setQuestionProgress({ attempted: 0, total: 0 });
     recordLearningActivity();
     setActiveScreen('question');
   };
 
+  const openQuestionBankTest = async (test) => {
+    try {
+      const catalog = await fetchQuestionBank();
+      const product = catalog.products.find((item) => String(item.id) === String(test.productId));
+      if (!product) {
+        throw new Error('The product for this test is no longer available.');
+      }
+      const now = Date.now();
+      if (test.startDateTimeEnabled && new Date(test.startAt).getTime() > now) {
+        throw new Error('This test is not available yet.');
+      }
+      if (test.endDateTimeEnabled && new Date(test.endAt).getTime() < now) {
+        throw new Error('This test has ended.');
+      }
+      const subject = catalog.subjects.find((item) => String(item.id) === String(test.subjectId));
+      if (!subject) {
+        throw new Error('The subject for this test is no longer available.');
+      }
+      const availableQuestions = catalog.questions.filter((question) =>
+        String(question.productId) === String(test.productId) &&
+        String(question.subject) === String(subject.name) &&
+        (test.topic ? String(question.topic || '') === String(test.topic) : !question.topic) &&
+        String(question.status || 'Active').toLowerCase() === 'active',
+      );
+      const testQuestions = test.questionSelectionEnabled
+        ? availableQuestions.filter((question) =>
+          (test.questionIds || []).some((id) => String(id) === String(question.id)),
+        )
+        : availableQuestions;
+      if (!testQuestions.length) {
+        throw new Error('This test does not have any active questions yet.');
+      }
+
+      await openQuestion(test.title, 'questionBankTest', {
+        testKey: `questionBankTest:${test.id}`,
+        questionConfig: {
+          questions: testQuestions.map(toQuestion),
+          reviewEnabled: Boolean(product.isReviewEnabled),
+          revealAnswersImmediately: Boolean(product.isReviewEnabled),
+          revealAnswersAfterCompletion: true,
+          durationMinutes: test.durationEnabled ? test.durationMinutes : null,
+          marksPerQuestion: test.marksEnabled ? Number(test.marksPerQuestion) || 0 : 1,
+          negativeMarking: test.negativeMarkingEnabled ? Number(test.negativeMarking) || 0 : 0,
+        },
+      });
+    } catch (error) {
+      console.error('Unable to open the Question Bank test.', error);
+      showAppAlert('Test unavailable', error.message);
+    }
+  };
+
   const openLibrary = (screen, returnScreen = activeScreen) => {
     setLibraryReturnScreen(returnScreen);
     setActiveScreen(screen);
+  };
+
+  const openQuestionBankProduct = (product) => {
+    setSelectedQBankProductId(String(product.id));
+    setLibraryReturnScreen('testSeries');
+    setActiveScreen('qBank');
   };
 
   const openNotifications = (returnScreen = activeScreen) => {
@@ -852,7 +925,8 @@ export default function MainTabs({
         break;
       case 'qbank-anatomy':
         setLibraryReturnScreen('notifications');
-        openQuestion('Anatomy · Q Bank', 'qBank');
+        setSelectedQBankProductId(null);
+        setActiveScreen('qBank');
         break;
       case 'image-based-test-4':
         openQuestion('IBT 4', 'imageBasedTest');
@@ -863,7 +937,7 @@ export default function MainTabs({
   };
 
   const finishTest = async (evaluatedResult) => {
-    const testKey = `${questionReturnScreen}:${questionTitle}`;
+    const testKey = questionTestKey || `${questionReturnScreen}:${questionTitle}`;
     const existing = attemptHistoryRef.current.find((item) => item.key === testKey);
     const completedAttempt = {
       ...existing,
@@ -871,8 +945,8 @@ export default function MainTabs({
       title: questionTitle,
       category: TEST_CATEGORIES[questionReturnScreen] ?? 'Test Series',
       status: 'completed',
-      attempted: evaluatedResult.total - evaluatedResult.unanswered,
-      total: evaluatedResult.total,
+      attempted: (evaluatedResult.totalQuestions ?? evaluatedResult.total) - evaluatedResult.unanswered,
+      total: evaluatedResult.totalQuestions ?? evaluatedResult.total,
       score: evaluatedResult.score,
       accuracy: evaluatedResult.accuracy,
       percentage: evaluatedResult.percentage,
@@ -917,7 +991,7 @@ export default function MainTabs({
   };
 
   const cancelTest = async () => {
-    const testKey = `${questionReturnScreen}:${questionTitle}`;
+    const testKey = questionTestKey || `${questionReturnScreen}:${questionTitle}`;
     const existing = attemptHistoryRef.current.find((item) => item.key === testKey);
     const canceledAttempt = {
       ...existing,
@@ -955,14 +1029,19 @@ export default function MainTabs({
       return;
     }
 
-    setNotificationReturnScreen(questionReturnScreen);
-    setActiveScreen('notifications');
+    if (questionReturnScreen === 'questionBankTest') {
+      setActiveScreen('testSeriesTests');
+    } else {
+      setNotificationReturnScreen(questionReturnScreen);
+      setActiveScreen('notifications');
+    }
   };
 
   const onNavigate = (tab) => {
     if (tab === 'home') {
       setActiveScreen('home');
     } else if (tab === 'testSeries') {
+      setSelectedQBankProductId(null);
       setActiveScreen('testSeries');
     } else if (tab === 'videos') {
       openLibrary('videos');
@@ -983,6 +1062,15 @@ export default function MainTabs({
   }
 
   if (activeScreen === 'dailyQuestion') {
+    if (!dailyQuestion) {
+      return withAppAlert(
+        <DailyQuestionScreen
+          question={null}
+          error={dailyQuestionLoadError?.message || 'No active questions are available in the database yet.'}
+          onBack={() => setActiveScreen('home')}
+        />,
+      );
+    }
     return withAppAlert(
       <DailyQuestionScreen
         question={dailyQuestion}
@@ -1003,10 +1091,18 @@ export default function MainTabs({
         bookmarkedKeys={bookmarks.map((bookmark) => bookmark.identity)}
         bookmarkKeyPrefix={`${questionReturnScreen}:${questionTitle}:`}
         onToggleBookmark={toggleQuestionBookmark}
+        questions={questionConfig?.questions}
+        reviewEnabled={questionConfig?.reviewEnabled}
+        revealAnswersImmediately={questionConfig?.revealAnswersImmediately}
+        revealAnswersAfterCompletion={questionConfig?.revealAnswersAfterCompletion}
+        durationMinutes={questionConfig?.durationMinutes}
+        marksPerQuestion={questionConfig?.marksPerQuestion}
+        negativeMarking={questionConfig?.negativeMarking}
         onFinish={
           questionReturnScreen === 'grandTest' ||
           questionReturnScreen === 'imageBasedTest' ||
-          questionReturnScreen === 'subjectWiseTest'
+          questionReturnScreen === 'subjectWiseTest' ||
+          questionReturnScreen === 'questionBankTest'
             ? finishTest
             : undefined
         }
@@ -1020,7 +1116,7 @@ export default function MainTabs({
         result={resultData ?? undefined}
         testTitle={resultTestTitle}
         userName={userName}
-        onBack={() => setActiveScreen('grandTest')}
+        onBack={() => setActiveScreen(questionReturnScreen === 'questionBankTest' ? 'testSeriesTests' : 'grandTest')}
         onReviewQuestions={() => setActiveScreen('question')}
       />
     );
@@ -1091,7 +1187,11 @@ export default function MainTabs({
   if (activeScreen === 'qBank') {
     return (
       <QBankScreen
-        onBack={() => setActiveScreen(libraryReturnScreen)}
+        initialProductId={selectedQBankProductId}
+        onBack={() => {
+          setSelectedQBankProductId(null);
+          setActiveScreen(libraryReturnScreen);
+        }}
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
         bookmarkedKeys={bookmarks.map((bookmark) => bookmark.identity)}
@@ -1238,8 +1338,7 @@ export default function MainTabs({
         activeTab="testSeries"
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
-        onOpenQBank={() => openLibrary('qBank', 'testSeries')}
-        onOpenTestSeries={() => setActiveScreen('testSeriesTests')}
+        onOpenProduct={openQuestionBankProduct}
       />
     );
   }
@@ -1252,9 +1351,7 @@ export default function MainTabs({
         onBack={() => setActiveScreen('testSeries')}
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
-        onOpenGrandTest={() => setActiveScreen('grandTest')}
-        onOpenSubjectTest={() => setActiveScreen('subjectWiseTest')}
-        onOpenImageTest={() => setActiveScreen('imageBasedTest')}
+        onOpenQuestionBankTest={openQuestionBankTest}
       />
     );
   }
@@ -1266,8 +1363,11 @@ export default function MainTabs({
       streakCount={getCurrentStreakLength(activityDates)}
       streakCompleted={activityDates.includes(getLocalDateKey(new Date()))}
       streakError={streakLoadError}
-      todayQuestion={dailyQuestion.text}
-      todayQuestionSubject={dailyQuestion.subjectName}
+      todayQuestion={
+        dailyQuestion?.text ||
+        (dailyQuestionLoadError ? 'Question of the day is unavailable.' : 'Question of the day is loading…')
+      }
+      todayQuestionSubject={dailyQuestion?.subjectName || ''}
       activeTab="home"
       onNavigate={onNavigate}
       onNotificationPress={onNotificationPress}

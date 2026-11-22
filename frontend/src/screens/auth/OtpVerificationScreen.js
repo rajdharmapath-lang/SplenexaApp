@@ -19,7 +19,7 @@ import ThemedAlert from '../../components/ThemedAlert';
 import AppBackground from '../../components/AppBackground';
 
 const OTP_LENGTH = 6;
-const RESEND_DELAY = 29;
+const RESEND_DELAY = 60;
 const NAVY = '#100568';
 
 export default function OtpVerificationScreen({
@@ -28,7 +28,6 @@ export default function OtpVerificationScreen({
   onResendOtp,
   onVerify,
   onShowAlert,
-  demoMode = false,
 }) {
   const insets = useSafeAreaInsets();
   const inputRefs = useRef([]);
@@ -39,8 +38,11 @@ export default function OtpVerificationScreen({
   const [isVerifying, setIsVerifying] = useState(false);
   const [errorDialog, setErrorDialog] = useState(null);
   const otp = digits.join('');
-  const isOtpComplete = demoMode || digits.every(Boolean);
-  const displayPhoneNumber = '+91 XXXX XXXX';
+  const isOtpComplete = digits.every(Boolean);
+  const phoneDigits = phoneNumber.replace(/^\+91/, '').replace(/\D/g, '');
+  const displayPhoneNumber = phoneDigits.length === 10
+    ? `+91 ${'•'.repeat(phoneDigits.length - 4)}${phoneDigits.slice(-4)}`
+    : '+91';
 
   useEffect(() => {
     if (countdown === 0) {

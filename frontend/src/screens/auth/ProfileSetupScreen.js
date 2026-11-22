@@ -30,7 +30,7 @@ function GlassField({ children, style }) {
   );
 }
 
-export default function ProfileSetupScreen({ onBack, onComplete, demoMode = false }) {
+export default function ProfileSetupScreen({ onBack, onComplete }) {
   const insets = useSafeAreaInsets();
   const [name, setName] = useState('');
   const [state, setState] = useState('');
@@ -43,7 +43,7 @@ export default function ProfileSetupScreen({ onBack, onComplete, demoMode = fals
     openDropdown === 'state' ? INDIAN_STATES_AND_UTS : batchYears;
   const selectedValue = openDropdown === 'state' ? state : batchYear;
   const selectedIndex = Math.max(0, selectedOptions.indexOf(selectedValue));
-  const canContinue = demoMode || (name.trim().length > 0 && state.length > 0);
+  const canContinue = name.trim().length > 0 && state.length > 0;
 
   function selectOption(option) {
     if (openDropdown === 'state') {

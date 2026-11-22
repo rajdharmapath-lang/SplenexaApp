@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   BackHandler,
   Image,
@@ -18,7 +18,6 @@ import GlassCard, { glassCardEffects, theme } from '../../components/GlassCard';
 import ThemedAlert from '../../components/ThemedAlert';
 import AppBackground from '../../components/AppBackground';
 import typography from '../../theme/typography';
-import QUESTION_BANK from '../../data/questionBank';
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 const QUESTION_TIME_SECONDS = 60 * 60;
@@ -118,28 +117,42 @@ export default function QuestionScreen({
   bookmarkedKeys = [],
   bookmarkKeyPrefix = '',
   onToggleBookmark,
-  questions = QUESTION_BANK,
+  questions = [],
   reviewEnabled = true,
+  revealAnswersImmediately = false,
+  revealAnswersAfterCompletion = false,
+  durationMinutes,
+  marksPerQuestion = 1,
+  negativeMarking = 0,
 }) {
   const insets = useSafeAreaInsets();
   const { width: screenWidth } = useWindowDimensions();
+  const timeLimitSeconds = durationMinutes === undefined
+    ? QUESTION_TIME_SECONDS
+    : Number(durationMinutes) > 0
+      ? Number(durationMinutes) * 60
+      : null;
+  const isConfiguredTimeLimit = durationMinutes !== undefined && timeLimitSeconds !== null;
   const [questionIndex, setQuestionIndex] = useState(0);
   const [answers, setAnswers] = useState(() => Array(questions.length).fill(null));
-  const [timeRemaining, setTimeRemaining] = useState(QUESTION_TIME_SECONDS);
+  const [timeRemaining, setTimeRemaining] = useState(timeLimitSeconds || 0);
   const [activePanel, setActivePanel] = useState(null);
   const [confirmation, setConfirmation] = useState(null);
+  const startedAtRef = useRef(Date.now());
+  const autoSubmittedRef = useRef(false);
   const question = questions[questionIndex];
-  const isBookmarked = bookmarkedKeys.includes(
+  const isBookmarked = Boolean(question && bookmarkedKeys.includes(
     `${bookmarkKeyPrefix}${question.id ?? question.text}`,
-  );
-  const progress = (questionIndex + 1) / questions.length;
+  ));
+  const progress = questions.length ? (questionIndex + 1) / questions.length : 0;
   const isLastQuestion = questionIndex === questions.length - 1;
   const selectedOption = answers[questionIndex] ?? null;
-  const submitted = selectedOption !== null &&
-    !onFinish &&
-    (reviewEnabled || answers.every((answer) => answer !== null));
+  const submitted = Boolean(question) && selectedOption !== null &&
+    (onFinish
+      ? revealAnswersImmediately || (revealAnswersAfterCompletion && answers.every((answer) => answer !== null))
+      : reviewEnabled || answers.every((answer) => answer !== null));
   const attemptedCount = answers.filter((answer) => answer !== null).length;
-  const imageAspectRatio = question.imageAspectRatio || 1.5;
+  const imageAspectRatio = question?.imageAspectRatio || 1.5;
   const imageWidth = Math.min(screenWidth - 44 - 20, 420 * imageAspectRatio);
   const imageHeight = imageWidth / imageAspectRatio;
 
@@ -148,11 +161,12 @@ export default function QuestionScreen({
   }, [attemptedCount, onProgressChange, questions.length]);
 
   useEffect(() => {
+    if (!timeLimitSeconds) return undefined;
     const timer = setInterval(() => {
       setTimeRemaining((remaining) => Math.max(remaining - 1, 0));
     }, 1000);
     return () => clearInterval(timer);
-  }, []);
+  }, [timeLimitSeconds]);
 
   useEffect(() => {
     const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
@@ -168,15 +182,29 @@ export default function QuestionScreen({
 
   function finishTest() {
     const correct = answers.reduce(
-      (count, answer, index) => count + (answer === questions[index].answer ? 1 : 0),
+      (count, answer, index) =>
+        count + (answer !== null && Number.isInteger(questions[index].answer) && answer === questions[index].answer ? 1 : 0),
       0,
     );
     const attempted = answers.filter((answer) => answer !== null).length;
-    const incorrect = attempted - correct;
+    const scoredAttempted = answers.reduce(
+      (count, answer, index) =>
+        count + (answer !== null && Number.isInteger(questions[index].answer) ? 1 : 0),
+      0,
+    );
+    const incorrect = scoredAttempted - correct;
+    const unscored = attempted - scoredAttempted;
     const unanswered = questions.length - attempted;
-    const accuracy = attempted ? (correct / attempted) * 100 : 0;
-    const percentage = questions.length ? (correct / questions.length) * 100 : 0;
-    const elapsedMinutes = Math.floor((QUESTION_TIME_SECONDS - timeRemaining) / 60);
+    const pointsPerQuestion = Math.max(0, Number(marksPerQuestion) || 0);
+    const penaltyPerIncorrect = Math.max(0, Number(negativeMarking) || 0);
+    const score = correct * pointsPerQuestion - incorrect * penaltyPerIncorrect;
+    const totalMarks = questions.filter((item) => Number.isInteger(item.answer)).length * pointsPerQuestion;
+    const accuracy = scoredAttempted ? (correct / scoredAttempted) * 100 : 0;
+    const percentage = totalMarks ? (score / totalMarks) * 100 : 0;
+    const elapsedSeconds = timeLimitSeconds
+      ? timeLimitSeconds - timeRemaining
+      : Math.floor((Date.now() - startedAtRef.current) / 1000);
+    const elapsedMinutes = Math.floor(elapsedSeconds / 60);
     const hours = Math.floor(elapsedMinutes / 60);
     const minutes = elapsedMinutes % 60;
 
@@ -184,14 +212,16 @@ export default function QuestionScreen({
     onFinish?.({
       testTitle: title,
       subtitle: 'Your test results',
-      score: correct,
-      total: questions.length,
+      score,
+      total: totalMarks,
+      totalQuestions: questions.length,
       rank: null,
       accuracy: `${accuracy.toFixed(1)}%`,
       percentage: `${percentage.toFixed(1)}%`,
       timeSpent: `${String(hours).padStart(2, '0')}h ${String(minutes).padStart(2, '0')}m`,
       correct,
       incorrect,
+      unscored,
       unanswered,
       isEvaluated: true,
       subjects: [],
@@ -215,6 +245,13 @@ export default function QuestionScreen({
     });
   }
 
+  useEffect(() => {
+    if (questions.length && isConfiguredTimeLimit && timeRemaining === 0 && onFinish && !autoSubmittedRef.current) {
+      autoSubmittedRef.current = true;
+      finishTest();
+    }
+  }, [isConfiguredTimeLimit, onFinish, questions.length, timeRemaining]);
+
   function requestCancel() {
     setActivePanel(null);
     const isTest = Boolean(onCancel);
@@ -237,6 +274,23 @@ export default function QuestionScreen({
         },
       ],
     });
+  }
+
+  if (!question) {
+    return (
+      <AppBackground variant="testQuestion">
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.emptyState, { paddingTop: insets.top + 48 }]}>
+          <Text style={styles.emptyTitle}>Questions unavailable</Text>
+          <Text style={styles.emptyMessage}>
+            This test does not have questions from the database yet.
+          </Text>
+          <Pressable accessibilityRole="button" onPress={onBack} style={styles.emptyButton}>
+            <Text style={styles.emptyButtonText}>Go back</Text>
+          </Pressable>
+        </View>
+      </AppBackground>
+    );
   }
 
   return (
@@ -278,10 +332,12 @@ export default function QuestionScreen({
         >
           <View style={styles.progressTopRow}>
             <Text style={styles.progressLabel}>Test progress</Text>
-            <View style={styles.timer}>
-              <Feather name="clock" size={21} color={theme.blue} />
-              <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
-            </View>
+            {timeLimitSeconds ? (
+              <View style={styles.timer}>
+                <Feather name="clock" size={21} color={theme.blue} />
+                <Text style={styles.timerText}>{formatTime(timeRemaining)}</Text>
+              </View>
+            ) : null}
           </View>
           <View
             accessibilityRole="progressbar"
@@ -312,6 +368,11 @@ export default function QuestionScreen({
             contentStyle={styles.questionCardContent}
           >
             <Text style={styles.questionText}>{question.text}</Text>
+            {question.difficulty || question.tags?.length ? (
+              <Text style={styles.questionMetadata}>
+                {[question.difficulty, ...(question.tags || [])].filter(Boolean).join(' · ')}
+              </Text>
+            ) : null}
           </GlassCard>
           {question.image ? (
             <GlassCard
@@ -336,10 +397,12 @@ export default function QuestionScreen({
           <View style={styles.options}>
             {question.options.map((option, index) => {
               let state = selectedOption === index ? 'selected' : 'default';
-              if (submitted && index === question.answer) {
-                state = 'correct';
-              } else if (submitted && selectedOption === index) {
-                state = 'incorrect';
+              if (submitted && Number.isInteger(question.answer)) {
+                if (index === question.answer) {
+                  state = 'correct';
+                } else if (selectedOption === index) {
+                  state = 'incorrect';
+                }
               }
 
               return (
@@ -368,14 +431,16 @@ export default function QuestionScreen({
             >
               <View
                 accessibilityLiveRegion="polite"
-                style={[
-                  styles.answerFeedback,
-                  selectedOption === question.answer
-                    ? styles.correctFeedback
-                    : styles.incorrectFeedback,
-                ]}
+                style={Number.isInteger(question.answer)
+                  ? [
+                    styles.answerFeedback,
+                    selectedOption === question.answer
+                      ? styles.correctFeedback
+                      : styles.incorrectFeedback,
+                  ]
+                  : [styles.answerFeedback, styles.unscoredFeedback]}
               >
-                {selectedOption === question.answer ? (
+                {Number.isInteger(question.answer) && selectedOption === question.answer ? (
                   <LinearGradient
                     pointerEvents="none"
                     colors={theme.accent}
@@ -387,20 +452,24 @@ export default function QuestionScreen({
                 <Text
                   style={[
                     styles.feedbackIcon,
-                    selectedOption === question.answer && styles.feedbackTextCorrect,
+                    Number.isInteger(question.answer) && selectedOption === question.answer && styles.feedbackTextCorrect,
                   ]}
                 >
-                  {selectedOption === question.answer ? '✓' : '×'}
+                  {!Number.isInteger(question.answer)
+                    ? 'i'
+                    : selectedOption === question.answer ? '✓' : '×'}
                 </Text>
                 <Text
                   style={[
                     styles.feedbackText,
-                    selectedOption === question.answer && styles.feedbackTextCorrect,
+                    Number.isInteger(question.answer) && selectedOption === question.answer && styles.feedbackTextCorrect,
                   ]}
                 >
-                  {selectedOption === question.answer
-                    ? 'Your answer is correct.'
-                    : `Incorrect. Correct answer: ${OPTION_LABELS[question.answer]}.`}
+                  {!Number.isInteger(question.answer)
+                    ? 'No correct answer is marked for this question.'
+                    : selectedOption === question.answer
+                      ? 'Your answer is correct.'
+                      : `Incorrect. Correct answer: ${OPTION_LABELS[question.answer]}.`}
                 </Text>
               </View>
             </GlassCard>
@@ -758,6 +827,45 @@ const styles = StyleSheet.create({
     fontFamily: typography.fontFamily.semiBold,
     marginTop: 0,
   },
+  questionMetadata: {
+    color: theme.muted,
+    fontSize: 12,
+    lineHeight: 18,
+    marginTop: 10,
+    fontFamily: typography.fontFamily.medium,
+  },
+  emptyState: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 32,
+  },
+  emptyTitle: {
+    color: '#100568',
+    fontSize: 22,
+    textAlign: 'center',
+    fontFamily: typography.fontFamily.bold,
+  },
+  emptyMessage: {
+    color: theme.muted,
+    fontSize: 15,
+    lineHeight: 22,
+    marginTop: 10,
+    textAlign: 'center',
+    fontFamily: typography.fontFamily.regular,
+  },
+  emptyButton: {
+    marginTop: 20,
+    paddingHorizontal: 22,
+    paddingVertical: 12,
+    borderRadius: 22,
+    backgroundColor: '#10166B',
+  },
+  emptyButtonText: {
+    color: '#FFFFFF',
+    fontSize: 14,
+    fontFamily: typography.fontFamily.semiBold,
+  },
   imageFrame: {
     width: '100%',
   },
@@ -877,6 +985,9 @@ const styles = StyleSheet.create({
   },
   incorrectFeedback: {
     backgroundColor: 'rgba(228,123,138,0.18)',
+  },
+  unscoredFeedback: {
+    backgroundColor: 'rgba(18,169,201,0.12)',
   },
   feedbackIcon: {
     color: '#087B65',

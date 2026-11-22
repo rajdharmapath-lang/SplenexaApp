@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
+import { BackHandler } from 'react-native';
 import { useAuth } from '../hooks/useAuth';
 import LoginScreen from '../screens/auth/LoginScreen';
 import OtpVerificationScreen from '../screens/auth/OtpVerificationScreen';
@@ -11,6 +12,15 @@ export default function AuthStack() {
   const [requestId, setRequestId] = useState(null);
   const [showOtp, setShowOtp] = useState(false);
   const [alert, setAlert] = useState(null);
+
+  useEffect(() => {
+    if (!showOtp) return undefined;
+    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
+      setShowOtp(false);
+      return true;
+    });
+    return () => subscription.remove();
+  }, [showOtp]);
 
   const withAlert = (screen) => (
     <>

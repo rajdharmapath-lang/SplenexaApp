@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -13,45 +14,10 @@ import typography from '../../theme/typography';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
 import BottomNav from '../../components/BottomNav';
 import AppBackground from '../../components/AppBackground';
+import { fetchQuestionBank } from '../../services/questionBankService';
 
 const NAVY = '#0B0B5C';
 const BLUE_TEXT = '#4A5F94';
-
-const TEST_SERIES_TESTS = [
-  {
-    id: 'grand',
-    title: 'Grand Test',
-    subtitle: 'Full-length practice to build exam confidence.',
-    icon: 'clipboard-check-outline',
-  },
-  {
-    id: 'subject',
-    title: 'Subject-wise Test',
-    subtitle: 'Strengthen concepts, one subject at a time.',
-    icon: 'bookshelf',
-  },
-  {
-    id: 'image',
-    title: 'Image Based Test',
-    subtitle: 'Sharpen visual recognition with clinical images.',
-    icon: 'image-search-outline',
-  },
-];
-
-const MCQ_SECTIONS = [
-  {
-    id: 'qbank',
-    title: 'Q-Bank',
-    subtitle: 'Practice topic-wise MCQs at your own pace.',
-    icon: 'help-box-multiple-outline',
-  },
-  {
-    id: 'testSeries',
-    title: 'Test Series',
-    subtitle: 'Grand, subject-wise, and image-based tests.',
-    icon: 'clipboard-list-outline',
-  },
-];
 
 export default function TestSeriesScreen({
   activeTab = 'testSeries',
@@ -59,22 +25,65 @@ export default function TestSeriesScreen({
   onBack,
   onNavigate,
   onNotificationPress,
-  onOpenTestSeries,
-  onOpenGrandTest,
-  onOpenSubjectTest,
-  onOpenQBank,
-  onOpenImageTest,
+  onOpenProduct,
+  onOpenQuestionBankTest,
 }) {
   const insets = useSafeAreaInsets();
   const isMcqHome = view === 'mcq';
-  const tests = isMcqHome ? MCQ_SECTIONS : TEST_SERIES_TESTS;
-  const openTest = isMcqHome
-    ? { qbank: onOpenQBank, testSeries: onOpenTestSeries }
-    : {
-      grand: onOpenGrandTest,
-      subject: onOpenSubjectTest,
-      image: onOpenImageTest,
+  const [catalogLoading, setCatalogLoading] = useState(true);
+  const [questionBankTests, setQuestionBankTests] = useState([]);
+  const [questionBankProducts, setQuestionBankProducts] = useState([]);
+  const [questionBankSubjects, setQuestionBankSubjects] = useState([]);
+  const [questionBankQuestions, setQuestionBankQuestions] = useState([]);
+  const [questionBankError, setQuestionBankError] = useState(null);
+
+  useEffect(() => {
+    let active = true;
+    fetchQuestionBank()
+      .then((catalog) => {
+        if (active) {
+          setQuestionBankTests(catalog.tests);
+          setQuestionBankProducts(catalog.products);
+          setQuestionBankSubjects(catalog.subjects);
+          setQuestionBankQuestions(catalog.questions);
+        }
+      })
+      .catch((error) => {
+        console.error('Unable to load the database catalog for the test screen.', error);
+        if (active) setQuestionBankError(error);
+      })
+      .finally(() => {
+        if (active) setCatalogLoading(false);
+      });
+    return () => {
+      active = false;
     };
+  }, []);
+
+  function getTestAvailability(test) {
+    const now = Date.now();
+    if (test.startDateTimeEnabled && test.startAt && new Date(test.startAt).getTime() > now) {
+      return 'Available ' + new Date(test.startAt).toLocaleString();
+    }
+    if (test.endDateTimeEnabled && test.endAt && new Date(test.endAt).getTime() < now) {
+      return 'This test has ended';
+    }
+    return '';
+  }
+
+  function getTestQuestionCount(test) {
+    const subject = questionBankSubjects.find((item) => String(item.id) === String(test.subjectId));
+    if (!subject) return 0;
+    const questions = questionBankQuestions.filter((question) =>
+      String(question.productId) === String(test.productId) &&
+      String(question.subject) === String(subject.name) &&
+      (test.topic ? String(question.topic || '') === String(test.topic) : !question.topic) &&
+      String(question.status || 'Active').toLowerCase() === 'active',
+    );
+    if (!test.questionSelectionEnabled) return questions.length;
+    const selectedIds = new Set((test.questionIds || []).map(String));
+    return questions.filter((question) => selectedIds.has(String(question.id))).length;
+  }
 
   return (
     <AppBackground variant="tests">
@@ -105,39 +114,107 @@ export default function TestSeriesScreen({
           {onBack ? <View style={styles.backButtonSpacer} /> : null}
         </View>
 
-        {tests.map((test) => (
-          <Pressable
-            key={test.id}
-            accessibilityRole="button"
-            accessibilityLabel={`${test.title}. ${test.subtitle}`}
-            onPress={() => openTest[test.id]?.()}
-            style={styles.cardGap}
-          >
-            {({ pressed }) => (
-              <GlassCard
-                {...glassCardEffects}
-                style={pressed && styles.cardPressed}
-                contentStyle={styles.row}
+        {catalogLoading ? null : questionBankError ? (
+          <Text accessibilityRole="alert" style={styles.customTestsError}>
+            Content could not be loaded: {questionBankError.message}
+          </Text>
+        ) : isMcqHome && questionBankProducts.length ? (
+          questionBankProducts.map((product) => {
+            const questionCount = questionBankQuestions.filter((question) =>
+              String(question.productId) === String(product.id) &&
+              String(question.status || 'Active').toLowerCase() === 'active',
+            ).length;
+            return (
+              <Pressable
+                key={product.id}
+                accessibilityRole="button"
+                accessibilityLabel={`${product.name}. ${product.description || 'Product'}`}
+                onPress={() => onOpenProduct?.(product)}
+                style={styles.cardGap}
               >
-                <View style={styles.iconTile}>
-                  <MaterialCommunityIcons name={test.icon} size={34} color={NAVY} />
-                </View>
-                <View style={styles.textWrap}>
-                  <Text style={styles.cardTitle} numberOfLines={1}>{test.title}</Text>
-                  <Text style={styles.cardSub}>{test.subtitle}</Text>
-                </View>
-                <LinearGradient
-                  colors={['#4C6FE8', '#2FD9B0']}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 1 }}
-                  style={styles.arrow}
+                {({ pressed }) => (
+                  <GlassCard
+                    {...glassCardEffects}
+                    style={pressed && styles.cardPressed}
+                    contentStyle={styles.row}
+                  >
+                    <View style={styles.iconTile}>
+                      <MaterialCommunityIcons name="folder-outline" size={34} color={NAVY} />
+                    </View>
+                    <View style={styles.textWrap}>
+                      <Text style={styles.cardTitle} numberOfLines={1}>{product.name}</Text>
+                      <Text style={styles.cardSub}>
+                        {product.description || `${questionCount} active questions`}
+                      </Text>
+                    </View>
+                    <LinearGradient
+                      colors={['#4C6FE8', '#2FD9B0']}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
+                      style={styles.arrow}
+                    >
+                      <Feather name="arrow-right" size={22} color="#FFFFFF" />
+                    </LinearGradient>
+                  </GlassCard>
+                )}
+              </Pressable>
+            );
+          })
+        ) : isMcqHome ? (
+          <Text style={styles.customTestsError}>No active products are available in the database.</Text>
+        ) : questionBankTests.length > 0 ? (
+          <View style={styles.customTestsSection}>
+            <Text style={styles.customTestsHeading}>Available Tests</Text>
+            {questionBankTests.map((test) => {
+              const availability = getTestAvailability(test);
+              const product = questionBankProducts.find((item) => String(item.id) === String(test.productId));
+              const subtitle = [
+                product?.name,
+                `${getTestQuestionCount(test)} questions`,
+                availability,
+              ].filter(Boolean).join(' · ');
+              return (
+                <Pressable
+                  key={test.id}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${test.title}. ${subtitle}`}
+                  accessibilityState={{ disabled: Boolean(availability) }}
+                  disabled={Boolean(availability)}
+                  onPress={() => onOpenQuestionBankTest?.(test)}
+                  style={[styles.cardGap, availability && styles.cardDisabled]}
                 >
-                  <Feather name="arrow-right" size={22} color="#FFFFFF" />
-                </LinearGradient>
-              </GlassCard>
-            )}
-          </Pressable>
-        ))}
+                  {({ pressed }) => (
+                    <GlassCard
+                      {...glassCardEffects}
+                      style={pressed && styles.cardPressed}
+                      contentStyle={styles.row}
+                    >
+                      <View style={styles.iconTile}>
+                        <MaterialCommunityIcons name="clipboard-check-outline" size={34} color={NAVY} />
+                      </View>
+                      <View style={styles.textWrap}>
+                        <Text style={styles.cardTitle} numberOfLines={1}>{test.title}</Text>
+                        <Text style={styles.cardSub}>{subtitle}</Text>
+                      </View>
+                      <LinearGradient
+                        colors={['#4C6FE8', '#2FD9B0']}
+                        start={{ x: 0, y: 0 }}
+                        end={{ x: 1, y: 1 }}
+                        style={styles.arrow}
+                      >
+                        <Feather name="arrow-right" size={22} color="#FFFFFF" />
+                      </LinearGradient>
+                    </GlassCard>
+                  )}
+                </Pressable>
+              );
+            })}
+          </View>
+        ) : (
+          <Text style={styles.customTestsError}>
+            No tests are available in the database.
+          </Text>
+        )}
       </ScrollView>
 
       <BottomNav
@@ -181,6 +258,23 @@ const styles = StyleSheet.create({
   },
   cardGap: {
     marginBottom: 14,
+  },
+  customTestsSection: {
+    marginTop: 16,
+  },
+  customTestsHeading: {
+    color: NAVY,
+    fontSize: 20,
+    fontFamily: typography.fontFamily.bold,
+    marginBottom: 12,
+  },
+  customTestsError: {
+    color: '#A33B3B',
+    fontFamily: typography.fontFamily.regular,
+    marginTop: 12,
+  },
+  cardDisabled: {
+    opacity: 0.55,
   },
   row: {
     minHeight: 120,

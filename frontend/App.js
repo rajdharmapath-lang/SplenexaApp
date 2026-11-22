@@ -1,5 +1,6 @@
 import { useFonts } from 'expo-font';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { AuthProvider } from './src/context/AuthContext';
 import AppNavigator from './src/navigation/AppNavigator';
 import SplashScreen from './src/screens/auth/SplashScreen';
 import AppBackground from './src/components/AppBackground';
@@ -19,7 +20,11 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AppBackground>
-        {fontsLoaded ? <AppNavigator /> : <SplashScreen />}
+        {fontsLoaded ? (
+          <AuthProvider>
+            <AppNavigator />
+          </AuthProvider>
+        ) : <SplashScreen />}
       </AppBackground>
     </SafeAreaProvider>
   );

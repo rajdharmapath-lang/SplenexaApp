@@ -12,30 +12,16 @@ function getApiUrl() {
   return apiUrl;
 }
 
-function getSupabaseFunctionConfig() {
-  const { supabaseUrl, supabaseAnonKey } = Constants.expoConfig?.extra || {};
-  if (!supabaseUrl || !supabaseAnonKey) {
-    throw new Error(
-      'Supabase Edge Function is not configured. Set EXPO_PUBLIC_SUPABASE_URL and EXPO_PUBLIC_SUPABASE_ANON_KEY in frontend/.env.',
-    );
-  }
-  return {
-    baseUrl: supabaseUrl.replace(/\/+$/, ''),
-    apiKey: supabaseAnonKey,
-  };
-}
-
-async function request(path, { method = 'GET', body, token, baseUrl, apiKey } = {}) {
+async function request(path, { method = 'GET', body, token } = {}) {
   let response;
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    response = await fetch(`${baseUrl || getApiUrl()}${path}`, {
+    response = await fetch(`${getApiUrl()}${path}`, {
       method,
       headers: {
         Accept: 'application/json',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
-        ...(apiKey ? { apikey: apiKey } : {}),
         ...(token ? { Authorization: `Bearer ${token}` } : {}),
       },
       ...(body ? { body: JSON.stringify(body) } : {}),
@@ -67,11 +53,11 @@ async function request(path, { method = 'GET', body, token, baseUrl, apiKey } = 
 }
 
 function splitPhoneNumber(phoneNumber) {
-  const match = /^\+(\d{1,3})(\d{6,14})$/.exec(phoneNumber);
+  const match = /^\+91([6-9]\d{9})$/.exec(phoneNumber);
   if (!match) {
-    throw new Error('Enter a valid phone number including its country code.');
+    throw new Error('Enter a valid Indian phone number.');
   }
-  return { dialCode: match[1], phone: match[2] };
+  return { dialCode: '91', phone: match[1] };
 }
 
 export async function getExistingSession() {
@@ -114,12 +100,12 @@ export async function retryPhoneOtp(phoneNumber, requestId) {
 
 export async function verifyPhoneOtp(phoneNumber, code, requestId) {
   const phone = splitPhoneNumber(phoneNumber);
-  const { token, user } = await request('/api/auth/verify-otp', {
+  const { token, user, isNewUser } = await request('/api/auth/verify-otp', {
     method: 'POST',
     body: { ...phone, code, requestId },
   });
   await SecureStore.setItemAsync(SESSION_KEY, token);
-  return { session: { access_token: token, user }, user };
+  return { session: { access_token: token, user }, user, isNewUser: Boolean(isNewUser) };
 }
 
 export async function getUserProfile() {
@@ -136,24 +122,16 @@ export async function saveUserProfile(profile) {
   if (!token) {
     throw new Error('No signed-in session is available.');
   }
-  const { baseUrl, apiKey } = getSupabaseFunctionConfig();
-  const { user } = await request('/functions/v1/super-worker', {
+  const { user } = await request('/api/user/profile', {
     method: 'PATCH',
     body: profile,
     token,
-    baseUrl,
-    apiKey,
   });
   return user;
 }
 
 async function requestUserProfile(token) {
-  const { baseUrl, apiKey } = getSupabaseFunctionConfig();
-  const { user } = await request('/functions/v1/super-worker', {
-    token,
-    baseUrl,
-    apiKey,
-  });
+  const { user } = await request('/api/user/me', { token });
   return user;
 }
 

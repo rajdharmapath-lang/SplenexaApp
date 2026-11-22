@@ -17,20 +17,50 @@ import typography from '../../theme/typography';
 
 const OPTION_LABELS = ['A', 'B', 'C', 'D'];
 
-export default function DailyQuestionScreen({ question, initialAnswer, onAnswer, onBack }) {
+export default function DailyQuestionScreen({ question, initialAnswer, onAnswer, onBack, error }) {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const [selectedAnswer, setSelectedAnswer] = useState(initialAnswer ?? null);
-  const questionImageAspectRatio = question.imageAspectRatio ?? 1.5;
+  const questionImageAspectRatio = question?.imageAspectRatio ?? 1.5;
   const explanationImageAspectRatio =
-    question.explanationImageAspectRatio ?? questionImageAspectRatio;
+    question?.explanationImageAspectRatio ?? questionImageAspectRatio;
   const imageWidth = Math.min(width - 84, 420 * questionImageAspectRatio);
   const explanationImageWidth = Math.min(width - 84, 420 * explanationImageAspectRatio);
+  const hasCorrectAnswer = Number.isInteger(question?.answer);
 
   const selectAnswer = (index) => {
     setSelectedAnswer(index);
     onAnswer(index);
   };
+
+  if (!question) {
+    return (
+      <AppBackground variant="dailyQuestion">
+        <StatusBar barStyle="dark-content" />
+        <View style={[styles.content, { flex: 1, paddingTop: insets.top + 16 }]}>
+          <View style={styles.header}>
+            <Pressable
+              accessibilityRole="button"
+              accessibilityLabel="Back to Home"
+              hitSlop={10}
+              onPress={onBack}
+              style={styles.backButton}
+            >
+              <Feather name="chevron-left" size={30} color={theme.navy} />
+            </Pressable>
+            <Text style={styles.title}>Today’s Question</Text>
+            <View style={styles.headerSpacer} />
+          </View>
+          <GlassCard {...glassCardEffects} radius={22} contentStyle={styles.subjectCard}>
+            <Text style={styles.sectionHeading}>Question unavailable</Text>
+            <Text style={styles.explanationText}>
+              {error || 'No active questions are available in the database yet.'}
+            </Text>
+          </GlassCard>
+        </View>
+      </AppBackground>
+    );
+  }
 
   return (
     <AppBackground variant="dailyQuestion">
@@ -78,8 +108,8 @@ export default function DailyQuestionScreen({ question, initialAnswer, onAnswer,
         <Text style={styles.sectionHeading}>Choose an answer</Text>
         <View style={styles.options}>
           {question.options.map((option, index) => {
-            const isCorrect = selectedAnswer !== null && index === question.answer;
-            const isIncorrect = selectedAnswer === index && index !== question.answer;
+            const isCorrect = selectedAnswer !== null && hasCorrectAnswer && index === question.answer;
+            const isIncorrect = selectedAnswer === index && hasCorrectAnswer && index !== question.answer;
             const isSelected = selectedAnswer === index;
 
             return (
@@ -137,20 +167,24 @@ export default function DailyQuestionScreen({ question, initialAnswer, onAnswer,
           <GlassCard {...glassCardEffects} radius={24} contentStyle={styles.explanationCard}>
             <View style={styles.explanationHeading}>
               <Feather
-                name={selectedAnswer === question.answer ? 'check-circle' : 'info'}
+                name={hasCorrectAnswer && selectedAnswer === question.answer ? 'check-circle' : 'info'}
                 size={20}
-                color={selectedAnswer === question.answer ? '#067B67' : theme.teal}
+                color={hasCorrectAnswer && selectedAnswer === question.answer ? '#067B67' : theme.teal}
               />
               <Text style={styles.sectionHeading}>
-                {selectedAnswer === question.answer ? 'Correct!' : 'Answer and explanation'}
+                {!hasCorrectAnswer
+                  ? 'Answer and explanation'
+                  : selectedAnswer === question.answer ? 'Correct!' : 'Answer and explanation'}
               </Text>
             </View>
-            {selectedAnswer === question.answer ? null : (
+            {!hasCorrectAnswer ? (
+              <Text style={styles.correctAnswer}>No correct answer is marked for this question.</Text>
+            ) : selectedAnswer !== question.answer ? (
               <Text style={styles.correctAnswer}>
                 Correct answer: {OPTION_LABELS[question.answer]}. {question.options[question.answer]}
               </Text>
-            )}
-            <Text style={styles.explanationText}>{question.explanation}</Text>
+            ) : null}
+            {question.explanation ? <Text style={styles.explanationText}>{question.explanation}</Text> : null}
             {question.explanationImage ? (
               <Image
                 source={question.explanationImage}

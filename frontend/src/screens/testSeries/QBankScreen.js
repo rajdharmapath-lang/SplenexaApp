@@ -60,12 +60,18 @@ function getImageUri(html) {
   return match?.[1] || null;
 }
 
-function toQuestion(question) {
+export function toQuestion(question) {
   const questionHtml = question.questionHtml || '';
   const text = stripHtml(questionHtml) || stripHtml(question.text);
   const options = Array.isArray(question.options) ? question.options.map(stripHtml) : [];
-  const answer = Number(question.answer);
-  if (!text || options.length < 2 || !Number.isInteger(answer) || answer < 0 || answer >= options.length) {
+  const answer = question.answer === null || question.answer === undefined || question.answer === ''
+    ? null
+    : Number(question.answer);
+  if (
+    !text ||
+    options.length < 2 ||
+    (answer !== null && (!Number.isInteger(answer) || answer < 0 || answer >= options.length))
+  ) {
     throw new Error(`Question ${question.id || ''} is incomplete and could not be opened.`);
   }
   const explanationHtml = question.explanationHtml || '';
@@ -77,6 +83,8 @@ function toQuestion(question) {
     imageAspectRatio: 1.5,
     options,
     answer,
+    difficulty: question.difficulty || null,
+    tags: Array.isArray(question.tags) ? question.tags.map(String) : [],
     explanation: stripHtml(explanationHtml),
     explanationImage: getImageUri(explanationHtml)
       ? { uri: getImageUri(explanationHtml) }
@@ -141,6 +149,7 @@ function EmptyState({ title, message, action, onAction }) {
 
 export default function QBankScreen({
   title = 'Q Bank',
+  initialProductId,
   onBack,
   onNavigate,
   onNotificationPress,
@@ -151,7 +160,9 @@ export default function QBankScreen({
   const [catalog, setCatalog] = useState(null);
   const [loadError, setLoadError] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [selectedProductId, setSelectedProductId] = useState(null);
+  const [selectedProductId, setSelectedProductId] = useState(
+    initialProductId ? String(initialProductId) : null,
+  );
   const [selectedSubjectId, setSelectedSubjectId] = useState(null);
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [activeGroup, setActiveGroup] = useState(null);
@@ -160,7 +171,15 @@ export default function QBankScreen({
     setLoading(true);
     setLoadError(null);
     try {
-      setCatalog(await fetchQuestionBank());
+      const nextCatalog = await fetchQuestionBank();
+      setCatalog(nextCatalog);
+      if (initialProductId) {
+        const product = nextCatalog.products.find(
+          (item) => String(item.id) === String(initialProductId),
+        );
+        if (product) setSelectedProductId(String(product.id));
+        else throw new Error('This product is no longer available.');
+      }
     } catch (error) {
       console.error('Unable to load Question Bank content.', error);
       setLoadError(error);
@@ -171,7 +190,7 @@ export default function QBankScreen({
 
   useEffect(() => {
     loadCatalog();
-  }, []);
+  }, [initialProductId]);
 
   const selectedProduct = catalog?.products.find((product) => String(product.id) === selectedProductId);
   const productSubjects = useMemo(
@@ -231,6 +250,10 @@ export default function QBankScreen({
       return;
     }
     if (selectedProductId) {
+      if (initialProductId) {
+        onBack?.();
+        return;
+      }
       setSelectedProductId(null);
       return;
     }
@@ -270,7 +293,7 @@ export default function QBankScreen({
         <View style={styles.pageHeader}>
           <Pressable
             accessibilityRole="button"
-            accessibilityLabel={selectedProductId ? 'Go back' : 'Back to Test Series'}
+            accessibilityLabel={selectedProductId ? 'Go back' : 'Back to MCQ'}
             hitSlop={10}
             onPress={goBack}
             style={styles.backButton}

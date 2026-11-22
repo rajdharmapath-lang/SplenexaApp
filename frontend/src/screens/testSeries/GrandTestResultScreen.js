@@ -29,6 +29,7 @@ const SAMPLE_RESULT = {
   timeSpent: '04h 18m',
   correct: 240,
   incorrect: 40,
+  unscored: 0,
   unanswered: 20,
   subjects: [
     { name: 'Anatomy', percent: 82.5 },
@@ -343,11 +344,15 @@ export default function GrandTestResultScreen({
                 <Text style={styles.sumWord}>Incorrect</Text>
               </View>
               <View style={styles.summaryItem}>
+                <Text style={styles.sumNum}>{result.unscored ?? 0}</Text>
+                <Text style={styles.sumWord} numberOfLines={1}>Unscored</Text>
+              </View>
+              <View style={styles.summaryItem}>
                 <Text style={styles.sumNum}>{result.unanswered}</Text>
                 <Text style={styles.sumWord} numberOfLines={1}>Unanswered</Text>
               </View>
             </View>
-            <Text style={styles.summarySub}>Total {result.total} questions</Text>
+            <Text style={styles.summarySub}>Total {result.totalQuestions ?? result.total} questions</Text>
           </GlassCard>
         ) : null}
 
