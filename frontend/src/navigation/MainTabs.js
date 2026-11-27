@@ -847,7 +847,7 @@ export default function MainTabs({
       if (test.startDateTimeEnabled && new Date(test.startAt).getTime() > now) {
         throw new Error('This test is not available yet.');
       }
-      if (test.endDateTimeEnabled && new Date(test.endAt).getTime() < now) {
+      if (test.endDateTimeEnabled && new Date(test.endAt).getTime() <= now) {
         throw new Error('This test has ended.');
       }
       const subject = catalog.subjects.find((item) => String(item.id) === String(test.subjectId));
@@ -1154,7 +1154,7 @@ export default function MainTabs({
         onBack={() => setActiveScreen('testSeries')}
         onNavigate={onNavigate}
         onNotificationPress={onNotificationPress}
-        onOpenTest={(test) => openQuestion(`Grand Test ${test.id}`, 'grandTest')}
+        onOpenTest={openQuestionBankTest}
       />,
     );
   }

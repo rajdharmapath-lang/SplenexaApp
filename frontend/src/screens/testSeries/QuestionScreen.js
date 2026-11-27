@@ -407,7 +407,7 @@ export default function QuestionScreen({
 
               return (
                 <AnswerOption
-                  key={`${question.id}-${option}`}
+                  key={`${question.id}-${index}`}
                   label={OPTION_LABELS[index]}
                   text={option}
                   state={state}

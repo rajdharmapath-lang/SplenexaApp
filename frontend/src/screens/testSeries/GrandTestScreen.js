@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -12,13 +13,27 @@ import typography from '../../theme/typography';
 import BottomNav from '../../components/BottomNav';
 import GlassCard, { glassCardEffects } from '../../components/GlassCard';
 import AppBackground from '../../components/AppBackground';
+import { fetchQuestionBank } from '../../services/questionBankService';
 
-const GRAND_TESTS = [
-  { id: 4, date: '15 Nov 2026' },
-  { id: 3, date: '08 Nov 2026' },
-  { id: 2, date: '01 Nov 2026' },
-  { id: 1, date: '25 Oct 2026' },
-];
+function formatDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Date unavailable' : date.toLocaleString();
+}
+
+function formatDuration(minutes) {
+  const totalMinutes = Number(minutes);
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return 'Not set';
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  if (!hours) return `${remainingMinutes} min`;
+  if (!remainingMinutes) return `${hours} hr${hours === 1 ? '' : 's'}`;
+  return `${hours} hr ${remainingMinutes} min`;
+}
+
+function formatMarks(value) {
+  const marks = Number(value);
+  return Number.isFinite(marks) ? String(marks) : '0';
+}
 
 function ClipboardIcon() {
   return (
@@ -72,13 +87,31 @@ function BottomNavigation({ onNavigate, onNotificationPress }) {
   return <BottomNav active="tests" onNavigate={onNavigate} onNotificationPress={onNotificationPress} />;
 }
 
-function TestScheduleCard({ test, onPress, testPrefix }) {
+function TestScheduleCard({ test, onPress, testPrefix, availabilityTime }) {
+  const title = test.title || `${testPrefix} ${test.id}`;
+  const startTime = test.startDateTimeEnabled && test.startAt
+    ? new Date(test.startAt).getTime()
+    : null;
+  const isUpcoming = Number.isFinite(startTime) && startTime > availabilityTime;
+  const totalMarks = (Number(test.totalQuestions) || 0) * (Number(test.marksPerQuestion) || 0);
+  const details = [
+    `${Number(test.totalQuestions) || 0} questions`,
+    `${formatMarks(totalMarks)} marks total`,
+    `${formatDuration(test.durationEnabled ? test.durationMinutes : null)}`,
+    `${formatMarks(test.marksPerQuestion)} mark${Number(test.marksPerQuestion) === 1 ? '' : 's'} per question`,
+    test.negativeMarkingEnabled
+      ? `−${formatMarks(test.negativeMarking)} negative mark${Number(test.negativeMarking) === 1 ? '' : 's'}`
+      : null,
+  ].filter(Boolean);
+
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`Open ${testPrefix} ${test.id}, ${test.date}, 9 AM to 2 PM`}
+      accessibilityLabel={`Open ${title}. ${details.join(', ')}`}
+      accessibilityState={{ disabled: isUpcoming }}
+      disabled={isUpcoming}
       onPress={() => onPress?.(test)}
-      style={styles.testCardPressable}
+      style={[styles.testCardPressable, isUpcoming && styles.testCardDisabled]}
     >
       {({ pressed }) => (
         <GlassCard
@@ -92,7 +125,7 @@ function TestScheduleCard({ test, onPress, testPrefix }) {
               <ClipboardIcon />
             </View>
             <Text numberOfLines={1} style={styles.testTitle}>
-              {testPrefix} {test.id}
+              {title}
             </Text>
             <LinearGradient
               colors={['#4C6FE8', '#4FE4BA']}
@@ -104,30 +137,41 @@ function TestScheduleCard({ test, onPress, testPrefix }) {
             </LinearGradient>
           </View>
 
-          <View style={styles.separator} />
-          <View style={styles.scheduleRow}>
-            <ScheduleIcon name="calendar" />
-            <Text style={styles.rowLabel}>Start:</Text>
-            <Text numberOfLines={1} style={styles.rowValue}>{test.date} · 9:00 AM</Text>
-          </View>
-          <View style={styles.separator} />
-          <View style={styles.scheduleRow}>
-            <ScheduleIcon name="clock" />
-            <Text style={styles.rowLabel}>End:</Text>
-            <Text numberOfLines={1} style={styles.rowValue}>{test.date} · 2:00 PM</Text>
-          </View>
+          {test.startDateTimeEnabled && test.startAt ? (
+            <>
+              <View style={styles.separator} />
+              <View style={styles.scheduleRow}>
+                <ScheduleIcon name="calendar" />
+                <Text style={styles.rowLabel}>Start:</Text>
+                <Text numberOfLines={1} style={styles.rowValue}>{formatDateTime(test.startAt)}</Text>
+              </View>
+            </>
+          ) : null}
+          {test.endDateTimeEnabled && test.endAt ? (
+            <>
+              <View style={styles.separator} />
+              <View style={styles.scheduleRow}>
+                <ScheduleIcon name="clock" />
+                <Text style={styles.rowLabel}>End:</Text>
+                <Text numberOfLines={1} style={styles.rowValue}>{formatDateTime(test.endAt)}</Text>
+              </View>
+            </>
+          ) : null}
           <View style={styles.separator} />
           <View style={styles.detailsRow}>
             <View style={styles.marksDetail}>
               <ScheduleIcon name="award" />
-              <Text style={styles.detailText}>300 marks</Text>
+              <Text style={styles.detailText}>{formatMarks(totalMarks)} marks</Text>
             </View>
             <View style={styles.detailsDivider} />
             <View style={styles.durationDetail}>
               <ScheduleIcon name="timer" />
-              <Text style={styles.detailText}>Duration: 5 hours</Text>
+              <Text style={styles.detailText}>{formatDuration(test.durationEnabled ? test.durationMinutes : null)}</Text>
             </View>
           </View>
+          <Text style={styles.scoringDetails} numberOfLines={2}>
+            {[details[0], ...details.slice(3)].join(' · ')}
+          </Text>
         </GlassCard>
       )}
     </Pressable>
@@ -141,9 +185,41 @@ export default function GrandTestScreen({
   onOpenTest,
   title = 'Grand Test',
   testPrefix = 'Grand Test',
-  tests = GRAND_TESTS,
 }) {
   const insets = useSafeAreaInsets();
+  const [tests, setTests] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(null);
+  const [availabilityTime, setAvailabilityTime] = useState(() => Date.now());
+
+  useEffect(() => {
+    let active = true;
+    fetchQuestionBank()
+      .then((catalog) => {
+        if (active) setTests(catalog.tests);
+      })
+      .catch((error) => {
+        console.error('Unable to load Grand Tests from the database.', error);
+        if (active) setLoadError(error);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    const intervalId = setInterval(() => setAvailabilityTime(Date.now()), 15000);
+    return () => clearInterval(intervalId);
+  }, []);
+
+  const currentTests = tests.filter((test) => {
+    if (!test.endDateTimeEnabled || !test.endAt) return true;
+    const endTime = new Date(test.endAt).getTime();
+    return !Number.isFinite(endTime) || endTime > availabilityTime;
+  });
 
   return (
     <AppBackground variant="grandTest">
@@ -167,21 +243,34 @@ export default function GrandTestScreen({
           </Pressable>
           <View style={styles.headingGroup}>
             <Text style={styles.heading}>{title}</Text>
-            <Text style={styles.subtitle}>Sample schedule · IST</Text>
+            <Text style={styles.subtitle}>Scheduled tests</Text>
           </View>
           <View style={styles.headerSpacer} />
         </View>
 
-        <View style={styles.testList}>
-          {tests.map((test) => (
-            <TestScheduleCard
-              key={test.id}
-              test={test}
-              testPrefix={testPrefix}
-              onPress={onOpenTest}
-            />
-          ))}
-        </View>
+        {loading ? (
+          <Text style={styles.emptyMessage}>Loading tests…</Text>
+        ) : loadError ? (
+          <Text accessibilityRole="alert" style={styles.emptyMessage}>
+            Tests could not be loaded: {loadError.message}
+          </Text>
+        ) : currentTests.length ? (
+          <View style={styles.testList}>
+            {currentTests.map((test) => (
+              <TestScheduleCard
+                key={test.id}
+                test={test}
+                testPrefix={testPrefix}
+                availabilityTime={availabilityTime}
+                onPress={onOpenTest}
+              />
+            ))}
+          </View>
+        ) : (
+          <Text style={styles.emptyMessage}>
+            {tests.length ? 'No tests are currently available.' : 'No tests are available in the database.'}
+          </Text>
+        )}
       </ScrollView>
 
       <BottomNavigation onNavigate={onNavigate} onNotificationPress={onNotificationPress} />
@@ -244,6 +333,9 @@ const styles = StyleSheet.create({
   },
   testCardPressable: {
     width: '100%',
+  },
+  testCardDisabled: {
+    opacity: 0.6,
   },
   testCardContent: {
     minHeight: 144,
@@ -475,6 +567,19 @@ const styles = StyleSheet.create({
     color: '#100568',
     fontSize: 13,
     fontFamily: typography.fontFamily.semiBold,
+  },
+  scoringDetails: {
+    marginTop: 6,
+    marginLeft: 36,
+    color: '#5778A4',
+    fontSize: 12,
+    fontFamily: typography.fontFamily.medium,
+  },
+  emptyMessage: {
+    marginTop: 18,
+    color: '#5778A4',
+    fontSize: 15,
+    fontFamily: typography.fontFamily.medium,
   },
   bottomNavContainer: {
     paddingHorizontal: 20,

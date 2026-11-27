@@ -36,6 +36,7 @@ export default function TestSeriesScreen({
   const [questionBankSubjects, setQuestionBankSubjects] = useState([]);
   const [questionBankQuestions, setQuestionBankQuestions] = useState([]);
   const [questionBankError, setQuestionBankError] = useState(null);
+  const [availabilityTime, setAvailabilityTime] = useState(() => Date.now());
 
   useEffect(() => {
     let active = true;
@@ -60,16 +61,27 @@ export default function TestSeriesScreen({
     };
   }, []);
 
+  useEffect(() => {
+    const intervalId = setInterval(() => setAvailabilityTime(Date.now()), 15000);
+    return () => clearInterval(intervalId);
+  }, []);
+
   function getTestAvailability(test) {
-    const now = Date.now();
+    const now = availabilityTime;
     if (test.startDateTimeEnabled && test.startAt && new Date(test.startAt).getTime() > now) {
       return 'Available ' + new Date(test.startAt).toLocaleString();
     }
-    if (test.endDateTimeEnabled && test.endAt && new Date(test.endAt).getTime() < now) {
+    if (test.endDateTimeEnabled && test.endAt && new Date(test.endAt).getTime() <= now) {
       return 'This test has ended';
     }
     return '';
   }
+
+  const currentTests = questionBankTests.filter((test) => {
+    if (!test.endDateTimeEnabled || !test.endAt) return true;
+    const endTime = new Date(test.endAt).getTime();
+    return !Number.isFinite(endTime) || endTime > availabilityTime;
+  });
 
   function getTestQuestionCount(test) {
     const subject = questionBankSubjects.find((item) => String(item.id) === String(test.subjectId));
@@ -162,10 +174,10 @@ export default function TestSeriesScreen({
           })
         ) : isMcqHome ? (
           <Text style={styles.customTestsError}>No active products are available in the database.</Text>
-        ) : questionBankTests.length > 0 ? (
+        ) : currentTests.length > 0 ? (
           <View style={styles.customTestsSection}>
             <Text style={styles.customTestsHeading}>Available Tests</Text>
-            {questionBankTests.map((test) => {
+            {currentTests.map((test) => {
               const availability = getTestAvailability(test);
               const product = questionBankProducts.find((item) => String(item.id) === String(test.productId));
               const subtitle = [
@@ -212,7 +224,9 @@ export default function TestSeriesScreen({
           </View>
         ) : (
           <Text style={styles.customTestsError}>
-            No tests are available in the database.
+            {questionBankTests.length > 0
+              ? 'No tests are currently available.'
+              : 'No tests are available in the database.'}
           </Text>
         )}
       </ScrollView>

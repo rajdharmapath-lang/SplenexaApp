@@ -60,6 +60,21 @@ function getImageUri(html) {
   return match?.[1] || null;
 }
 
+function formatDateTime(value) {
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? 'Not set' : date.toLocaleString();
+}
+
+function formatDuration(minutes) {
+  const totalMinutes = Number(minutes);
+  if (!Number.isFinite(totalMinutes) || totalMinutes <= 0) return 'No time limit';
+  const hours = Math.floor(totalMinutes / 60);
+  const remainingMinutes = totalMinutes % 60;
+  if (!hours) return `${remainingMinutes} min`;
+  if (!remainingMinutes) return `${hours} hr${hours === 1 ? '' : 's'}`;
+  return `${hours} hr ${remainingMinutes} min`;
+}
+
 export function toQuestion(question) {
   const questionHtml = question.questionHtml || '';
   const text = stripHtml(questionHtml) || stripHtml(question.text);
@@ -92,11 +107,13 @@ export function toQuestion(question) {
   };
 }
 
-function SelectionCard({ title, subtitle, icon, count, onPress }) {
+function SelectionCard({ title, subtitle, icon, count, testDetails, onPress }) {
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={`${title}${subtitle ? `. ${subtitle}` : ''}`}
+      accessibilityLabel={`${title}${subtitle ? `. ${subtitle}` : ''}${testDetails?.length
+        ? `. ${testDetails.map((test) => [test.title, ...test.lines].join('. ')).join('. ')}`
+        : ''}`}
       onPress={onPress}
       style={styles.cardPressable}
     >
@@ -104,29 +121,42 @@ function SelectionCard({ title, subtitle, icon, count, onPress }) {
         <GlassCard
           {...glassCardEffects}
           style={[styles.card, pressed && styles.cardPressed]}
-          contentStyle={styles.cardContent}
+          contentStyle={[
+            styles.cardContent,
+            testDetails?.length > 0 && styles.cardContentWithTests,
+          ]}
           radius={24}
         >
-          {icon ? (
-            <Image source={icon} style={styles.itemIcon} accessibilityLabel={`${title} icon`} />
-          ) : (
-            <View style={styles.topicIcon}>
-              <Feather name="folder" size={23} color="#10166B" />
+          <View style={styles.cardMainRow}>
+            {icon ? (
+              <Image source={icon} style={styles.itemIcon} accessibilityLabel={`${title} icon`} />
+            ) : (
+              <View style={styles.topicIcon}>
+                <Feather name="folder" size={23} color="#10166B" />
+              </View>
+            )}
+            <View style={styles.cardCopy}>
+              <Text numberOfLines={2} style={styles.itemTitle}>{title}</Text>
+              {subtitle ? <Text numberOfLines={2} style={styles.itemSubtitle}>{subtitle}</Text> : null}
             </View>
-          )}
-          <View style={styles.cardCopy}>
-            <Text numberOfLines={2} style={styles.itemTitle}>{title}</Text>
-            {subtitle ? <Text numberOfLines={2} style={styles.itemSubtitle}>{subtitle}</Text> : null}
+            {Number.isInteger(count) ? <Text style={styles.count}>{count}</Text> : null}
+            <LinearGradient
+              colors={['#4C6FE8', '#4FE4BA']}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.arrowCircle}
+            >
+              <Feather name="arrow-right" size={20} color="#FFFFFF" />
+            </LinearGradient>
           </View>
-          {Number.isInteger(count) ? <Text style={styles.count}>{count}</Text> : null}
-          <LinearGradient
-            colors={['#4C6FE8', '#4FE4BA']}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.arrowCircle}
-          >
-            <Feather name="arrow-right" size={20} color="#FFFFFF" />
-          </LinearGradient>
+          {testDetails?.map((test) => (
+            <View key={test.id} style={styles.testDetails}>
+              <Text style={styles.testDetailsTitle}>{test.title}</Text>
+              {test.lines.map((line, index) => (
+                <Text key={`${test.id}-${index}`} style={styles.testDetailsText}>{line}</Text>
+              ))}
+            </View>
+          ))}
         </GlassCard>
       )}
     </Pressable>
@@ -210,6 +240,50 @@ export default function QBankScreen({
       (topic === null ? true : (question.topic || '') === topic) &&
       String(question.status || 'Active').toLowerCase() === 'active',
     ).length;
+  }
+
+  function getTestDetails(subject, topic = null) {
+    const productTests = (catalog.tests || []).filter(
+      (test) => String(test.productId) === String(selectedProduct.id),
+    );
+    const subjectTests = productTests.filter(
+      (test) => String(test.subjectId) === String(subject.id),
+    );
+    const matchingTests = subjectTests.length
+      ? subjectTests
+      : productTests.filter(
+        (test) => String(test.title || '').trim().toLowerCase() === subject.name.trim().toLowerCase(),
+      );
+    const linkedTests = matchingTests.length || productTests.length !== 1
+      ? matchingTests
+      : productTests;
+    return linkedTests
+      .filter((test) => String(test.topic || '') === String(topic || ''))
+      .map((test) => {
+        const matchingQuestions = catalog.questions.filter((question) =>
+          String(question.productId) === String(selectedProduct.id) &&
+          question.subject === subject.name &&
+          (test.topic ? (question.topic || '') === test.topic : !(question.topic || '')) &&
+          String(question.status || 'Active').toLowerCase() === 'active',
+        );
+        const testQuestions = test.questionSelectionEnabled
+          ? matchingQuestions.filter((question) =>
+            (test.questionIds || []).some((id) => String(id) === String(question.id)),
+          )
+          : matchingQuestions;
+        const marksPerQuestion = test.marksEnabled
+          ? Math.max(0, Number(test.marksPerQuestion) || 0)
+          : 0;
+        return {
+          id: String(test.id),
+          title: test.title,
+          lines: [
+            `Start: ${test.startDateTimeEnabled && test.startAt ? formatDateTime(test.startAt) : 'Not set'}`,
+            `End: ${test.endDateTimeEnabled && test.endAt ? formatDateTime(test.endAt) : 'Not set'}`,
+            `${testQuestions.length} questions · ${testQuestions.length * marksPerQuestion} total marks · Duration: ${formatDuration(test.durationEnabled ? test.durationMinutes : null)}`,
+          ],
+        };
+      });
   }
 
   function openQuestionGroup(subject, topic) {
@@ -341,6 +415,7 @@ export default function QBankScreen({
                 title={subject.name}
                 icon={SUBJECT_ICONS[subject.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')] || null}
                 count={questionCount(subject, null)}
+                testDetails={getTestDetails(subject)}
                 onPress={() => {
                   setSelectedSubjectId(String(subject.id));
                   if (!(selectedProduct.supportsTopics && subject.topics?.length)) {
@@ -353,6 +428,7 @@ export default function QBankScreen({
                 key={topic}
                 title={topic}
                 count={questionCount(selectedSubject, topic)}
+                testDetails={getTestDetails(selectedSubject, topic)}
                 onPress={() => openQuestionGroup(selectedSubject, topic)}
               />
             )) : (
@@ -430,6 +506,17 @@ const styles = StyleSheet.create({
     gap: 12,
     padding: 18,
   },
+  cardContentWithTests: {
+    flexDirection: 'column',
+    alignItems: 'stretch',
+  },
+  cardMainRow: {
+    width: '100%',
+    minHeight: 46,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
   itemIcon: {
     width: 48,
     height: 48,
@@ -459,6 +546,25 @@ const styles = StyleSheet.create({
     color: '#5778A4',
     fontSize: 13,
     lineHeight: 18,
+    fontFamily: typography.fontFamily.regular,
+  },
+  testDetails: {
+    width: '100%',
+    marginTop: 8,
+    paddingTop: 8,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(87,120,164,0.25)',
+  },
+  testDetailsTitle: {
+    color: '#100568',
+    fontSize: 12,
+    lineHeight: 16,
+    fontFamily: typography.fontFamily.semiBold,
+  },
+  testDetailsText: {
+    color: '#5778A4',
+    fontSize: 11,
+    lineHeight: 15,
     fontFamily: typography.fontFamily.regular,
   },
   count: {
